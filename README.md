@@ -32,10 +32,21 @@ npm run dev
 ### Microsoft Entra ID
 
 The provider is configured against the `common` issuer so personal, work, and
-school Microsoft accounts can sign in. Register the app in Entra with redirect
-URI `http://localhost:3000/api/auth/callback/microsoft-entra-id` (plus the
-deployed origin) and set `AUTH_MICROSOFT_ENTRA_ID_ID` and
+school Microsoft accounts can sign in. Register the app in Entra as a **Web**
+platform with redirect URI
+`http://localhost:3000/api/auth/callback/microsoft-entra-id` (plus the deployed
+origin) and set `AUTH_MICROSOFT_ENTRA_ID_ID` and
 `AUTH_MICROSOFT_ENTRA_ID_SECRET`.
+
+Supported account types must be "Accounts in any organizational directory and
+personal Microsoft accounts". A registration limited to personal accounts
+rejects the `common` endpoint with
+`The request is not valid for the application's 'userAudience' configuration`;
+either widen the registration or point `AUTH_MICROSOFT_ENTRA_ID_ISSUER` at the
+consumer tenant
+`https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0`
+(`/consumers/v2.0` does not work — its discovery document advertises the tenant
+GUID as the issuer, so Auth.js rejects the mismatch).
 
 Roles live in the `users` table (`admin`, `approver`, `analyst`). The first user
 whose email matches `SEED_ADMIN_EMAIL` is created as an admin; everyone else
