@@ -2,10 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 
 const PUBLIC_PATHS = ["/login", "/api/auth"];
 
-const SESSION_COOKIES = [
-  "authjs.session-token",
-  "__Secure-authjs.session-token",
-];
+// Auth.js splits tokens larger than ~4KB into .0, .1, ... chunks.
+const SESSION_COOKIE = /^(__Secure-)?authjs\.session-token(\.\d+)?$/;
 
 function isPublic(pathname: string) {
   return PUBLIC_PATHS.some(
@@ -24,9 +22,9 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const hasSession = SESSION_COOKIES.some((name) =>
-    request.cookies.has(name),
-  );
+  const hasSession = request.cookies
+    .getAll()
+    .some((cookie) => SESSION_COOKIE.test(cookie.name));
   if (hasSession) {
     return NextResponse.next();
   }

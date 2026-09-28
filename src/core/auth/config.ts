@@ -65,11 +65,21 @@ const baseConfig = {
       clientId: process.env.AUTH_MICROSOFT_ENTRA_ID_ID,
       clientSecret: process.env.AUTH_MICROSOFT_ENTRA_ID_SECRET,
       issuer: process.env.AUTH_MICROSOFT_ENTRA_ID_ISSUER,
+      // The stock provider inlines the Graph profile photo as a base64 data URI,
+      // which bloats both the users row and the session cookie.
+      profile: (profile) => ({
+        id: profile.sub as string,
+        name: profile.name ?? null,
+        email: profile.email as string,
+        image: null,
+      }),
     }),
   ],
   callbacks: {
     async jwt({ token, user }) {
       const db = getDb();
+      // Chunked cookies break the proxy's session check; nothing renders avatars.
+      delete token.picture;
       if (user?.id) {
         token.sub = user.id;
       }
