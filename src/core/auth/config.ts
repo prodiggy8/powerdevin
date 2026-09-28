@@ -65,7 +65,6 @@ const baseConfig = {
       clientId: process.env.AUTH_MICROSOFT_ENTRA_ID_ID,
       clientSecret: process.env.AUTH_MICROSOFT_ENTRA_ID_SECRET,
       issuer: process.env.AUTH_MICROSOFT_ENTRA_ID_ISSUER,
-      allowDangerousEmailAccountLinking: true,
     }),
   ],
   callbacks: {
