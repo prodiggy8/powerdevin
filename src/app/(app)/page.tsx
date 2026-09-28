@@ -18,7 +18,7 @@ const MODULES = [
     title: "KYC review queue",
     description: "Triage and decide on identity verification cases.",
     icon: FileCheck,
-    ready: false,
+    ready: true,
   },
   {
     href: "/refunds",
@@ -52,18 +52,36 @@ export default async function HomePage() {
       />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {MODULES.map((module) => (
-          <Card key={module.href} className="gap-0 shadow-none">
-            <CardHeader>
-              <module.icon className="mb-3 size-5 text-muted-foreground" />
-              <CardTitle className="text-base">{module.title}</CardTitle>
-              <CardDescription>{module.description}</CardDescription>
-              <Badge variant="outline" className="mt-3 w-fit">
-                Coming next
-              </Badge>
-            </CardHeader>
-          </Card>
-        ))}
+        {MODULES.map((module) => {
+          const card = (
+            <Card
+              className={
+                module.ready
+                  ? "h-full gap-0 shadow-none transition-colors group-hover:border-foreground/30"
+                  : "gap-0 shadow-none"
+              }
+            >
+              <CardHeader>
+                <module.icon className="mb-3 size-5 text-muted-foreground" />
+                <CardTitle className="text-base">{module.title}</CardTitle>
+                <CardDescription>{module.description}</CardDescription>
+                {module.ready ? null : (
+                  <Badge variant="outline" className="mt-3 w-fit">
+                    Coming next
+                  </Badge>
+                )}
+              </CardHeader>
+            </Card>
+          );
+
+          return module.ready ? (
+            <Link key={module.href} href={module.href} className="group">
+              {card}
+            </Link>
+          ) : (
+            <div key={module.href}>{card}</div>
+          );
+        })}
 
         {hasRole(user.role, "admin") ? (
           <Link href="/admin/users" className="group">
