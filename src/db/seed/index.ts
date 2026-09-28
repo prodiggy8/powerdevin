@@ -1,15 +1,16 @@
 import type { Database } from "../index";
 import { seedFlags } from "./flags";
 import { seedUsers } from "./users";
+import { seedKyc } from "./kyc";
 import { resetRefunds, seedRefunds } from "./refunds";
 import type { SeedModule } from "./types";
 
-/** Later modules (kyc, refunds, flags) append themselves here. */
 export const SEED_MODULES: SeedModule[] = [
   resetRefunds,
   seedUsers,
   seedFlags,
   seedRefunds,
+  seedKyc,
 ];
 
 export async function runSeed({
@@ -27,5 +28,5 @@ export async function runSeed({
   }
 }
 
-export { seedUsers, seedFlags };
+export { seedUsers, seedFlags, seedKyc };
 export type { SeedContext, SeedModule } from "./types";

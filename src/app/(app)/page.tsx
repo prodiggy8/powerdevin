@@ -18,7 +18,7 @@ const MODULES = [
     title: "KYC review queue",
     description: "Triage and decide on identity verification cases.",
     icon: FileCheck,
-    ready: false,
+    ready: true,
   },
   {
     href: "/refunds",
