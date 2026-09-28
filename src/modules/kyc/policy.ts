@@ -85,3 +85,8 @@ export function canClaim(candidate: { status: KycStatus }): PolicyCheck {
   }
   return { ok: true };
 }
+
+/** Claiming takes ownership; it never lifts an escalation. */
+export function statusAfterClaim(status: KycStatus): KycStatus {
+  return status === "escalated" ? "escalated" : "in_review";
+}

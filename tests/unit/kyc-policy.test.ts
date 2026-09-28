@@ -8,6 +8,7 @@ import {
   isRiskBand,
   riskBand,
   riskBandRange,
+  statusAfterClaim,
   statusFor,
 } from "@/modules/kyc/policy";
 
@@ -82,6 +83,14 @@ describe("canDecide", () => {
         error: "This case is already final.",
       });
     }
+  });
+});
+
+describe("statusAfterClaim", () => {
+  it("moves open cases into review but keeps escalations escalated", () => {
+    expect(statusAfterClaim("pending")).toBe("in_review");
+    expect(statusAfterClaim("in_review")).toBe("in_review");
+    expect(statusAfterClaim("escalated")).toBe("escalated");
   });
 });
 

@@ -14,6 +14,7 @@ import {
   canDecide,
   DECISIONS,
   MIN_REASON_LENGTH,
+  statusAfterClaim,
   statusFor,
 } from "./policy";
 import { KYC_ENTITY } from "./queries";
@@ -81,7 +82,7 @@ export async function claimCase(input: { caseId: string }): Promise<ActionResult
 
     const [after] = await tx
       .update(kycCases)
-      .set({ assignedTo: actor.id, status: "in_review" })
+      .set({ assignedTo: actor.id, status: statusAfterClaim(before.status) })
       .where(eq(kycCases.id, caseId))
       .returning(AUDITED_FIELDS);
 

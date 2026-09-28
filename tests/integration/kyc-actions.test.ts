@@ -102,6 +102,25 @@ describe("claimCase", () => {
     expect(entry.after).toMatchObject({ status: "in_review" });
   });
 
+  it("keeps an escalated case escalated so an analyst still cannot decide it", async () => {
+    const analyst = await createUser("analyst@contoso.com", "analyst");
+    const kycCase = await createCase({ status: "escalated", riskScore: 12 });
+    signIn(analyst);
+
+    expect(await claimCase({ caseId: kycCase.id })).toEqual({ ok: true });
+
+    const after = await reload(kycCase.id);
+    expect(after?.status).toBe("escalated");
+    expect(after?.assignedTo).toBe(analyst.id);
+    expect(
+      await decideCase({
+        caseId: kycCase.id,
+        decision: "approve",
+        reason: "Documents verified against the national register.",
+      }),
+    ).toEqual({ ok: false, error: "Escalated cases need an approver." });
+  });
+
   it("refuses a case that is already final", async () => {
     const analyst = await createUser("analyst@contoso.com", "analyst");
     const kycCase = await createCase({ status: "approved" });
