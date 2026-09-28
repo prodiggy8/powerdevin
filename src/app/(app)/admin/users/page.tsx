@@ -5,6 +5,8 @@ import { users } from "@/db/schema";
 import { requireRole } from "@/core/auth";
 import { clampPage, parseDataTableQuery } from "@/core/data-table";
 import { isRole, type Role } from "@/core/rbac";
+import { PageHeader } from "@/components/page-header";
+import { Badge } from "@/components/ui/badge";
 import { UsersTable, type UserRow } from "./users-table";
 
 const SORTABLE = {
@@ -70,14 +72,16 @@ export default async function AdminUsersPage({
   }));
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Users &amp; roles</h1>
-        <p className="text-muted-foreground">
-          Role changes take effect on the user&apos;s next request and are
-          written to the audit log.
-        </p>
-      </div>
+    <div className="flex flex-1 flex-col gap-6">
+      <PageHeader
+        title="Users & roles"
+        description="Role changes take effect on the user's next request and are written to the audit log."
+        actions={
+          <Badge variant="outline" className="h-7 px-2.5">
+            {total} {total === 1 ? "user" : "users"}
+          </Badge>
+        }
+      />
       <UsersTable
         data={data}
         total={total}

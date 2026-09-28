@@ -1,9 +1,28 @@
-import Link from "next/link";
-
 import { signOut, type SessionUser } from "@/core/auth";
 import { hasRole } from "@/core/rbac";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { AppBreadcrumbs } from "@/components/app-breadcrumbs";
+import { AppSidebar, type NavGroup } from "@/components/app-sidebar";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { Separator } from "@/components/ui/separator";
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
+
+const OPERATIONS: NavGroup = {
+  label: "Operations",
+  items: [
+    { title: "KYC review", href: "/kyc", icon: "kyc" },
+    { title: "Refunds", href: "/refunds", icon: "refunds" },
+    { title: "Feature flags", href: "/flags", icon: "flags" },
+  ],
+};
+
+const ADMIN: NavGroup = {
+  label: "Admin",
+  items: [{ title: "Users & roles", href: "/admin/users", icon: "users" }],
+};
 
 export function AppShell({
   user,
@@ -12,39 +31,40 @@ export function AppShell({
   user: SessionUser;
   children: React.ReactNode;
 }) {
+  const groups = hasRole(user.role, "admin")
+    ? [OPERATIONS, ADMIN]
+    : [OPERATIONS];
+
+  async function signOutAction() {
+    "use server";
+    await signOut({ redirectTo: "/login" });
+  }
+
   return (
-    <div className="flex min-h-svh flex-col">
-      <header className="border-b">
-        <div className="mx-auto flex w-full max-w-6xl items-center gap-4 px-6 py-3">
-          <Link href="/" className="font-semibold">
-            PowerDevin
-          </Link>
-          <nav className="flex items-center gap-3 text-sm text-muted-foreground">
-            {hasRole(user.role, "admin") ? (
-              <Link href="/admin/users" className="hover:text-foreground">
-                Users
-              </Link>
-            ) : null}
-          </nav>
-          <div className="ml-auto flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">{user.email}</span>
-            <Badge variant="secondary">{user.role}</Badge>
-            <form
-              action={async () => {
-                "use server";
-                await signOut({ redirectTo: "/login" });
-              }}
-            >
-              <Button type="submit" variant="outline" size="sm">
-                Sign out
-              </Button>
-            </form>
+    <SidebarProvider>
+      <AppSidebar
+        groups={groups}
+        user={{
+          name: user.name ?? null,
+          email: user.email ?? "",
+          role: user.role,
+        }}
+        signOutAction={signOutAction}
+      />
+      <SidebarInset>
+        <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
+          <SidebarTrigger className="-ml-1" />
+          <Separator
+            orientation="vertical"
+            className="mr-2 data-[orientation=vertical]:h-4"
+          />
+          <AppBreadcrumbs />
+          <div className="ml-auto">
+            <ThemeToggle />
           </div>
-        </div>
-      </header>
-      <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
-        {children}
-      </main>
-    </div>
+        </header>
+        <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">{children}</div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

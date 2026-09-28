@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { ShieldCheck } from "lucide-react";
 
 import { auth, signIn } from "@/core/auth";
 import { Button } from "@/components/ui/button";
@@ -39,44 +40,69 @@ export default async function LoginPage({
   );
 
   return (
-    <main className="flex min-h-svh items-center justify-center bg-muted/40 p-6">
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle>Sign in to PowerDevin</CardTitle>
-          <CardDescription>
-            Internal operations console. Access is granted with your Microsoft
-            account.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {error ? (
-            <p className="text-sm text-destructive">
-              {AUTH_ERRORS[error] ?? "Sign-in failed. Please try again."}
+    <main className="flex min-h-svh w-full items-start justify-center px-6 pt-24 md:items-center md:pt-0">
+      <div className="flex w-full max-w-sm flex-col gap-10">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <span className="flex size-10 items-center justify-center rounded-sm bg-primary text-primary-foreground">
+            <ShieldCheck className="size-5" />
+          </span>
+          <div className="space-y-1">
+            <h1 className="text-lg font-semibold tracking-tight">PowerDevin</h1>
+            <p className="text-sm text-muted-foreground">
+              Internal operations console
             </p>
-          ) : null}
-          {configured ? null : (
-            <p className="text-sm text-destructive">{AUTH_ERRORS.Configuration}</p>
-          )}
-          <form
-            action={async () => {
-              "use server";
-              await signIn("microsoft-entra-id", {
-                redirectTo: callbackUrl ?? "/",
-              });
-            }}
-          >
-            <Button
-              type="submit"
-              className="w-full"
-              size="lg"
-              disabled={!configured}
+          </div>
+        </div>
+
+        <Card className="shadow-none">
+          <CardHeader>
+            <CardTitle className="text-base">Sign in</CardTitle>
+            <CardDescription>
+              Use the Microsoft account issued by your organization.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {error ? (
+              <p
+                role="alert"
+                className="border-l-2 border-destructive pl-3 text-sm text-destructive"
+              >
+                {AUTH_ERRORS[error] ?? "Sign-in failed. Please try again."}
+              </p>
+            ) : null}
+            {configured ? null : (
+              <p
+                role="alert"
+                className="border-l-2 border-destructive pl-3 text-sm text-destructive"
+              >
+                {AUTH_ERRORS.Configuration}
+              </p>
+            )}
+            <form
+              action={async () => {
+                "use server";
+                await signIn("microsoft-entra-id", {
+                  redirectTo: callbackUrl ?? "/",
+                });
+              }}
             >
-              <MicrosoftLogo />
-              Continue with Microsoft
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+              <Button
+                type="submit"
+                className="w-full"
+                size="lg"
+                disabled={!configured}
+              >
+                <MicrosoftLogo />
+                Continue with Microsoft
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        <p className="text-center text-xs text-muted-foreground">
+          Access is logged. Role changes are written to the audit trail.
+        </p>
+      </div>
     </main>
   );
 }

@@ -15,6 +15,15 @@ import {
 } from "@/components/ui/select";
 import { updateUserRole } from "./actions";
 
+function initials(value: string) {
+  return value
+    .split(/[\s@._-]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+}
+
 export type UserRow = {
   id: string;
   name: string | null;
@@ -41,12 +50,12 @@ function RoleSelect({ user, isSelf }: { user: UserRow; isSelf: boolean }) {
         });
       }}
     >
-      <SelectTrigger className="h-8 w-[140px]">
+      <SelectTrigger className="h-8 w-[140px] capitalize">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
         {ROLES.map((role) => (
-          <SelectItem key={role} value={role}>
+          <SelectItem key={role} value={role} className="capitalize">
             {role}
           </SelectItem>
         ))}
@@ -71,9 +80,22 @@ export function UsersTable({
       {
         accessorKey: "name",
         header: "Name",
-        cell: ({ row }) => row.original.name ?? "—",
+        cell: ({ row }) => (
+          <div className="flex items-center gap-2">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-sm bg-muted text-xs font-medium text-muted-foreground">
+              {initials(row.original.name ?? row.original.email ?? "?")}
+            </span>
+            <span className="font-medium">{row.original.name ?? "—"}</span>
+          </div>
+        ),
       },
-      { accessorKey: "email", header: "Email" },
+      {
+        accessorKey: "email",
+        header: "Email",
+        cell: ({ row }) => (
+          <span className="text-muted-foreground">{row.original.email}</span>
+        ),
+      },
       {
         accessorKey: "createdAt",
         header: "Created",
@@ -87,6 +109,7 @@ export function UsersTable({
       {
         accessorKey: "role",
         header: "Role",
+        enableHiding: false,
         cell: ({ row }) => (
           <RoleSelect
             user={row.original}
@@ -113,7 +136,8 @@ export function UsersTable({
         },
       ]}
       searchPlaceholder="Search name or email…"
-      emptyMessage="No users yet."
+      emptyMessage="No users found"
+      emptyDescription="Users appear here after their first Microsoft sign-in."
     />
   );
 }
