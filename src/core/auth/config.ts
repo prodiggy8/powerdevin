@@ -4,7 +4,7 @@ import type { Adapter, AdapterUser } from "next-auth/adapters";
 import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
 import { eq } from "drizzle-orm";
 
-import { db, getDb } from "@/db";
+import { getDb } from "@/db";
 import { accounts, sessions, users, verificationTokens } from "@/db/schema";
 import { isRole, type Role } from "@/core/rbac";
 
@@ -22,7 +22,8 @@ function initialRoleFor(email: string | null | undefined): Role {
 }
 
 function createAdapter(): Adapter {
-  const adapter = DrizzleAdapter(getDb(), {
+  const db = getDb();
+  const adapter = DrizzleAdapter(db, {
     usersTable: users,
     accountsTable: accounts,
     sessionsTable: sessions,
@@ -51,21 +52,12 @@ function createAdapter(): Adapter {
 
 let adapterInstance: Adapter | undefined;
 
-// Resolved on first use: `next build` imports this module without a database.
-const lazyAdapter = new Proxy({} as Adapter, {
-  get(_target, prop) {
-    adapterInstance ??= createAdapter();
-    const value = Reflect.get(adapterInstance, prop, adapterInstance);
-    return typeof value === "function" ? value.bind(adapterInstance) : value;
-  },
-  has(_target, prop) {
-    adapterInstance ??= createAdapter();
-    return prop in adapterInstance;
-  },
-});
+function getAdapter(): Adapter {
+  adapterInstance ??= createAdapter();
+  return adapterInstance;
+}
 
-export const authConfig = {
-  adapter: lazyAdapter,
+const baseConfig = {
   session: { strategy: "jwt" },
   pages: { signIn: "/login" },
   providers: [
@@ -78,6 +70,7 @@ export const authConfig = {
   ],
   callbacks: {
     async jwt({ token, user }) {
+      const db = getDb();
       if (user?.id) {
         token.sub = user.id;
       }
@@ -109,3 +102,11 @@ export const authConfig = {
     },
   },
 } satisfies NextAuthConfig;
+
+/**
+ * Resolved per request: `next build` imports this module without a database, and
+ * Auth.js shallow-copies the adapter, so it cannot be a lazy proxy.
+ */
+export function authConfig(): NextAuthConfig {
+  return { ...baseConfig, adapter: getAdapter() };
+}

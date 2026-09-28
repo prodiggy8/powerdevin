@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { hasRole, type Role } from "@/core/rbac";
 import { authConfig } from "./config";
 
-export const { handlers, auth, signIn, signOut } = NextAuth(authConfig);
+export const { handlers, auth, signIn, signOut } = NextAuth(() => authConfig());
 
 export type SessionUser = Session["user"];
 
