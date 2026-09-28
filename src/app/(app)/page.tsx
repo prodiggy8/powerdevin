@@ -25,14 +25,14 @@ const MODULES = [
     title: "Refunds dashboard",
     description: "Review refund requests and approvals above threshold.",
     icon: ReceiptText,
-    ready: false,
+    ready: true,
   },
   {
     href: "/flags",
     title: "Feature flags",
     description: "Toggle and audit feature flags per environment.",
     icon: Flag,
-    ready: false,
+    ready: true,
   },
 ];
 
@@ -73,7 +73,6 @@ export default async function HomePage() {
               </CardHeader>
             </Card>
           );
-
           return module.ready ? (
             <Link key={module.href} href={module.href} className="group">
               {card}
