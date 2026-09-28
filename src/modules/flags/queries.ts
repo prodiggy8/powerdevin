@@ -139,6 +139,19 @@ export async function listFlags(
   return { rows, total };
 }
 
+/** Every flag with its states, for the board view which has no pagination. */
+export async function listAllFlags(): Promise<FlagListRow[]> {
+  const { rows } = await listFlags({
+    page: 1,
+    pageSize: 500,
+    search: "",
+    sort: "key",
+    order: "asc",
+    filters: {},
+  });
+  return rows;
+}
+
 export type FlagDetail = {
   id: string;
   key: string;

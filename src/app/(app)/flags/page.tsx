@@ -38,11 +38,16 @@ export default async function FlagsPage({
         title="Feature flags"
         description="Toggle flags per environment. Every change is written to the audit log; prod needs a reason."
         actions={
-          canCreateFlag(user.role) ? (
-            <Button asChild size="sm">
-              <Link href="/flags/new">New flag</Link>
+          <>
+            <Button asChild size="sm" variant="outline">
+              <Link href="/flags/board">Board view</Link>
             </Button>
-          ) : null
+            {canCreateFlag(user.role) ? (
+              <Button asChild size="sm">
+                <Link href="/flags/new">New flag</Link>
+              </Button>
+            ) : null}
+          </>
         }
       />
       <FlagsTable
