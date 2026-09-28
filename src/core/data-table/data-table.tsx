@@ -7,10 +7,30 @@ import {
   getCoreRowModel,
   useReactTable,
   type ColumnDef,
+  type VisibilityState,
 } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, ChevronsUpDown } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  ChevronsUpDown,
+  Search,
+  Settings2,
+  X,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -28,6 +48,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { DataTableFacetedFilter } from "./faceted-filter";
 import { PAGE_SIZE_OPTIONS, type DataTableQuery } from "./query";
 
 export type DataTableFilter = {
@@ -48,9 +69,8 @@ export type DataTableProps<TData, TValue> = {
   filters?: DataTableFilter[];
   searchPlaceholder?: string;
   emptyMessage?: string;
+  emptyDescription?: string;
 };
-
-const ALL = "__all__";
 
 /**
  * Generic table wired for server-side pagination, sorting and filtering: all
@@ -65,12 +85,14 @@ export function DataTable<TData, TValue>({
   filters = [],
   searchPlaceholder = "Search…",
   emptyMessage = "No results.",
+  emptyDescription,
 }: DataTableProps<TData, TValue>) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
   const [search, setSearch] = useState(query.search);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
 
   useEffect(() => setSearch(query.search), [query.search]);
 
@@ -112,47 +134,93 @@ export function DataTable<TData, TValue>({
     manualSorting: true,
     manualFiltering: true,
     pageCount: totalPages,
+    state: { columnVisibility },
+    onColumnVisibilityChange: setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
   });
+
+  const hasActiveFilters =
+    Boolean(query.search) ||
+    filters.some((filter) => Boolean(query.filters[filter.id]));
+
+  const resetFilters = () => {
+    setSearch("");
+    pushParams({
+      search: undefined,
+      page: "1",
+      ...Object.fromEntries(filters.map((filter) => [filter.id, undefined])),
+    });
+  };
+
+  const visibleColumnCount = table.getVisibleLeafColumns().length;
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <Input
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder={searchPlaceholder}
-          className="h-9 max-w-xs"
-        />
+        <div className="relative w-full max-w-xs">
+          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={searchPlaceholder}
+            aria-label={searchPlaceholder}
+            className="h-9 pl-8"
+          />
+        </div>
         {filters.map((filter) => (
-          <Select
+          <DataTableFacetedFilter
             key={filter.id}
-            value={query.filters[filter.id] ?? ALL}
-            onValueChange={(value) =>
-              pushParams({
-                [filter.id]: value === ALL ? undefined : value,
-                page: "1",
-              })
-            }
-          >
-            <SelectTrigger className="h-9 w-[180px]">
-              <SelectValue placeholder={filter.label} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>All {filter.label.toLowerCase()}</SelectItem>
-              {filter.options.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            label={filter.label}
+            options={filter.options}
+            value={query.filters[filter.id]}
+            onChange={(value) => pushParams({ [filter.id]: value, page: "1" })}
+          />
         ))}
+        {hasActiveFilters ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-9"
+            onClick={resetFilters}
+          >
+            Reset
+            <X className="size-4" />
+          </Button>
+        ) : null}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="ml-auto h-9">
+              <Settings2 className="size-4" />
+              View
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {table
+              .getAllLeafColumns()
+              .filter((column) => column.getCanHide())
+              .map((column) => (
+                <DropdownMenuCheckboxItem
+                  key={column.id}
+                  className="capitalize"
+                  checked={column.getIsVisible()}
+                  onCheckedChange={(checked) =>
+                    column.toggleVisibility(Boolean(checked))
+                  }
+                >
+                  {typeof column.columnDef.header === "string"
+                    ? column.columnDef.header
+                    : column.id}
+                </DropdownMenuCheckboxItem>
+              ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <div
         className={cn(
-          "rounded-md border transition-opacity",
+          "overflow-hidden rounded-sm border transition-opacity",
           isPending && "opacity-60",
         )}
       >
@@ -200,12 +268,26 @@ export function DataTable<TData, TValue>({
           </TableHeader>
           <TableBody>
             {table.getRowModel().rows.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center text-muted-foreground"
-                >
-                  {emptyMessage}
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={visibleColumnCount} className="h-40">
+                  <div className="flex flex-col items-center justify-center gap-1 text-center">
+                    <p className="text-sm font-medium">{emptyMessage}</p>
+                    {emptyDescription ? (
+                      <p className="text-sm text-muted-foreground">
+                        {emptyDescription}
+                      </p>
+                    ) : null}
+                    {hasActiveFilters ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-3"
+                        onClick={resetFilters}
+                      >
+                        Clear filters
+                      </Button>
+                    ) : null}
+                  </div>
                 </TableCell>
               </TableRow>
             ) : (
@@ -248,19 +330,43 @@ export function DataTable<TData, TValue>({
           </span>
           <Button
             variant="outline"
-            size="sm"
+            size="icon"
+            className="size-8"
+            aria-label="First page"
             disabled={query.page <= 1 || isPending}
-            onClick={() => pushParams({ page: String(query.page - 1) })}
+            onClick={() => pushParams({ page: "1" })}
           >
-            Previous
+            <ChevronsLeft className="size-4" />
           </Button>
           <Button
             variant="outline"
-            size="sm"
+            size="icon"
+            className="size-8"
+            aria-label="Previous page"
+            disabled={query.page <= 1 || isPending}
+            onClick={() => pushParams({ page: String(query.page - 1) })}
+          >
+            <ChevronLeft className="size-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="size-8"
+            aria-label="Next page"
             disabled={query.page >= totalPages || isPending}
             onClick={() => pushParams({ page: String(query.page + 1) })}
           >
-            Next
+            <ChevronRight className="size-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="size-8"
+            aria-label="Last page"
+            disabled={query.page >= totalPages || isPending}
+            onClick={() => pushParams({ page: String(totalPages) })}
+          >
+            <ChevronsRight className="size-4" />
           </Button>
         </div>
       </div>

@@ -1,5 +1,7 @@
 export { DataTable } from "./data-table";
 export type { DataTableFilter, DataTableProps } from "./data-table";
+export { DataTableFacetedFilter } from "./faceted-filter";
+export type { FacetedFilterOption } from "./faceted-filter";
 export {
   parseDataTableQuery,
   clampPage,

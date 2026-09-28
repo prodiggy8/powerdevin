@@ -64,3 +64,27 @@ written to `audit_log` in the same transaction as the update.
 | `npm run db:generate` | generate a migration from the schema |
 | `npm run db:migrate` | apply migrations |
 | `npm run db:studio` | drizzle studio |
+| `npm run db:seed` | seed demo data (`-- --reset` to replace it) |
+| `npm run test` | unit tests, no database required |
+| `npm run test:integration` | integration tests against `powerdevin_test` |
+| `npm run test:all` | both suites |
+
+## Seed data
+
+`npm run db:seed` loads `.env.local` then `.env` and inserts 40 display-only
+users across all three roles plus 25 `user.role.updated` audit rows. Seeded
+accounts live on the reserved `example.invalid` domain and have no `accounts`
+rows, so they can never sign in or collide with a real Microsoft identity — the
+first real admin still comes from `SEED_ADMIN_EMAIL` on first login. The seed is
+idempotent (upsert by email); `npm run db:seed -- --reset` deletes the seeded
+rows first and leaves real users untouched. Modules live in `src/db/seed/`
+(`users.ts` today, `kyc.ts` and friends later) and are registered in
+`src/db/seed/index.ts`.
+
+## Tests
+
+Unit tests (`tests/unit`) are pure and need no database. Integration tests
+(`tests/integration`) run against the docker-compose Postgres in a separate
+`powerdevin_test` database: the global setup creates it if missing and applies
+the Drizzle migrations, and every table is truncated between tests. Override the
+connection with `DATABASE_URL_TEST`; the default matches `docker-compose.yml`.
