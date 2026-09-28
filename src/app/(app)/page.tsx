@@ -25,7 +25,7 @@ const MODULES = [
     title: "Refunds dashboard",
     description: "Review refund requests and approvals above threshold.",
     icon: ReceiptText,
-    ready: false,
+    ready: true,
   },
   {
     href: "/flags",
