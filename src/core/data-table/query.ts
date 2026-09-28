@@ -10,6 +10,9 @@ export type DataTableQuery = {
 };
 
 export const DEFAULT_PAGE_SIZE = 20;
+// Bounds the offset an attacker can put in the URL; Postgres rejects anything
+// wider than a bigint and huge offsets are pointless anyway.
+export const MAX_PAGE = 1_000_000;
 export const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 
 export type RawSearchParams = Record<string, string | string[] | undefined>;
@@ -26,7 +29,10 @@ export function parseDataTableQuery(
   params: RawSearchParams,
   options: { sortableColumns?: string[]; filterColumns?: string[] } = {},
 ): DataTableQuery {
-  const page = Math.max(1, Number.parseInt(first(params.page) ?? "1", 10) || 1);
+  const page = Math.min(
+    MAX_PAGE,
+    Math.max(1, Number.parseInt(first(params.page) ?? "1", 10) || 1),
+  );
   const rawPageSize =
     Number.parseInt(first(params.pageSize) ?? "", 10) || DEFAULT_PAGE_SIZE;
   const pageSize = PAGE_SIZE_OPTIONS.includes(rawPageSize)
@@ -59,4 +65,10 @@ export function parseDataTableQuery(
 
 export function pageCount(total: number, pageSize: number): number {
   return Math.max(1, Math.ceil(total / pageSize));
+}
+
+/** Keeps a requested page inside the range the row count actually supports. */
+export function clampPage(query: DataTableQuery, total: number): DataTableQuery {
+  const page = Math.min(query.page, pageCount(total, query.pageSize));
+  return page === query.page ? query : { ...query, page };
 }

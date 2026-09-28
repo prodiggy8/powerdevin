@@ -3,7 +3,7 @@ import { and, asc, count, desc, eq, ilike, or, type SQL } from "drizzle-orm";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { requireRole } from "@/core/auth";
-import { parseDataTableQuery } from "@/core/data-table";
+import { clampPage, parseDataTableQuery } from "@/core/data-table";
 import { isRole, type Role } from "@/core/rbac";
 import { UsersTable, type UserRow } from "./users-table";
 
@@ -21,43 +21,45 @@ export default async function AdminUsersPage({
 }) {
   const actor = await requireRole("admin");
 
-  const query = parseDataTableQuery(await searchParams, {
+  const requested = parseDataTableQuery(await searchParams, {
     sortableColumns: Object.keys(SORTABLE),
     filterColumns: ["role"],
   });
 
   const conditions: SQL[] = [];
-  if (query.search) {
-    const pattern = `%${query.search}%`;
+  if (requested.search) {
+    const pattern = `%${requested.search}%`;
     const match = or(ilike(users.name, pattern), ilike(users.email, pattern));
     if (match) conditions.push(match);
   }
-  if (isRole(query.filters.role)) {
-    conditions.push(eq(users.role, query.filters.role));
+  if (isRole(requested.filters.role)) {
+    conditions.push(eq(users.role, requested.filters.role));
   }
   const where = conditions.length ? and(...conditions) : undefined;
 
-  const sortColumn = query.sort
-    ? SORTABLE[query.sort as keyof typeof SORTABLE]
+  const sortColumn = requested.sort
+    ? SORTABLE[requested.sort as keyof typeof SORTABLE]
     : users.createdAt;
-  const orderBy = query.order === "asc" ? asc(sortColumn) : desc(sortColumn);
+  const orderBy =
+    requested.order === "asc" ? asc(sortColumn) : desc(sortColumn);
 
-  const [rows, [totals]] = await Promise.all([
-    db
-      .select({
-        id: users.id,
-        name: users.name,
-        email: users.email,
-        role: users.role,
-        createdAt: users.createdAt,
-      })
-      .from(users)
-      .where(where)
-      .orderBy(orderBy)
-      .limit(query.pageSize)
-      .offset((query.page - 1) * query.pageSize),
-    db.select({ value: count() }).from(users).where(where),
-  ]);
+  const [totals] = await db.select({ value: count() }).from(users).where(where);
+  const total = totals.value;
+  const query = clampPage(requested, total);
+
+  const rows = await db
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      role: users.role,
+      createdAt: users.createdAt,
+    })
+    .from(users)
+    .where(where)
+    .orderBy(orderBy)
+    .limit(query.pageSize)
+    .offset((query.page - 1) * query.pageSize);
 
   const data: UserRow[] = rows.map((row) => ({
     id: row.id,
@@ -78,7 +80,7 @@ export default async function AdminUsersPage({
       </div>
       <UsersTable
         data={data}
-        total={totals.value}
+        total={total}
         query={query}
         currentUserId={actor.id}
       />

@@ -31,6 +31,13 @@ export default async function LoginPage({
 
   const { callbackUrl, error } = await searchParams;
 
+  // Without credentials Entra answers the redirect with AADSTS900144 on its own
+  // domain, so the button is stopped here instead.
+  const configured = Boolean(
+    process.env.AUTH_MICROSOFT_ENTRA_ID_ID &&
+      process.env.AUTH_MICROSOFT_ENTRA_ID_SECRET,
+  );
+
   return (
     <main className="flex min-h-svh items-center justify-center bg-muted/40 p-6">
       <Card className="w-full max-w-sm">
@@ -47,6 +54,9 @@ export default async function LoginPage({
               {AUTH_ERRORS[error] ?? "Sign-in failed. Please try again."}
             </p>
           ) : null}
+          {configured ? null : (
+            <p className="text-sm text-destructive">{AUTH_ERRORS.Configuration}</p>
+          )}
           <form
             action={async () => {
               "use server";
@@ -55,7 +65,12 @@ export default async function LoginPage({
               });
             }}
           >
-            <Button type="submit" className="w-full" size="lg">
+            <Button
+              type="submit"
+              className="w-full"
+              size="lg"
+              disabled={!configured}
+            >
               <MicrosoftLogo />
               Continue with Microsoft
             </Button>
