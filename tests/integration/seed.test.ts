@@ -38,7 +38,7 @@ describe("db:seed", () => {
     expect(second.map((row) => row.id).sort()).toEqual(
       first.map((row) => row.id).sort(),
     );
-    const [audit] = await db.select({ value: count() }).from(auditLog);
+    const [audit] = await db.select({ value: count() }).from(auditLog).where(eq(auditLog.action, "user.role.updated"));
     expect(audit.value).toBe(25);
   });
 
