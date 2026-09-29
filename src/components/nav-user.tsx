@@ -2,8 +2,7 @@
 
 import { ChevronsUpDown, LogOut } from "lucide-react";
 
-import type { Role } from "@/core/rbac";
-import { Badge } from "@/components/ui/badge";
+import { ROLE_LABELS, type Role } from "@/core/rbac";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -57,7 +56,7 @@ export function NavUser({
               <span className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{label}</span>
                 <span className="truncate text-xs text-muted-foreground">
-                  {email}
+                  {ROLE_LABELS[role]}
                 </span>
               </span>
               <ChevronsUpDown className="ml-auto size-4" />
@@ -75,9 +74,6 @@ export function NavUser({
                 <span className="truncate text-xs text-muted-foreground">
                   {email}
                 </span>
-                <Badge variant="secondary" className="w-fit capitalize">
-                  {role}
-                </Badge>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />

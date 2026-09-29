@@ -7,7 +7,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { DataTable, type DataTableQuery } from "@/core/data-table";
 import type { Role } from "@/core/rbac";
-import { FLAG_ENVIRONMENTS } from "@/modules/flags/policy";
+import { ENV_LABELS, FLAG_ENVIRONMENTS } from "@/modules/flags/policy";
 import type { FlagListRow } from "@/modules/flags/queries";
 import { FlagStateSwitch } from "./flag-state-switch";
 
@@ -65,7 +65,7 @@ export function FlagsTable({
       ...FLAG_ENVIRONMENTS.map<ColumnDef<FlagListRow, unknown>>(
         (environment) => ({
           id: environment,
-          header: environment,
+          header: ENV_LABELS[environment],
           cell: ({ row }) => {
             const state = row.original.states.find(
               (candidate) => candidate.environment === environment,
@@ -106,7 +106,7 @@ export function FlagsTable({
           id: "enabledIn",
           label: "Enabled in",
           options: FLAG_ENVIRONMENTS.map((environment) => ({
-            label: environment,
+            label: ENV_LABELS[environment],
             value: environment,
           })),
         },

@@ -8,9 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { Role } from "@/core/rbac";
+import { formatDateTime } from "@/lib/format";
 import { setFlagState } from "@/modules/flags/actions";
 import {
   canChangeEnvironment,
+  ENV_LABELS,
   MAX_PROD_ROLLOUT_JUMP,
   PROD_REASON_MIN_LENGTH,
 } from "@/modules/flags/policy";
@@ -60,7 +62,7 @@ export function FlagStateEditor({
       });
       if (result.ok) {
         setReason("");
-        toast.success(`${flagKey} updated in ${environment}.`);
+        toast.success(`${flagKey} updated in ${ENV_LABELS[environment]}.`);
       } else {
         toast.error(result.error);
       }
@@ -70,11 +72,11 @@ export function FlagStateEditor({
   return (
     <div className="space-y-3 rounded-sm border p-4">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium capitalize">{environment}</span>
+        <span className="text-sm font-medium">{ENV_LABELS[environment]}</span>
         <Switch
           checked={nextEnabled}
           disabled={!allowed || isPending}
-          aria-label={`${flagKey} in ${environment}`}
+          aria-label={`${flagKey} in ${ENV_LABELS[environment]}`}
           onCheckedChange={setNextEnabled}
         />
       </div>
@@ -112,13 +114,13 @@ export function FlagStateEditor({
       ) : null}
 
       <p className="text-xs text-muted-foreground">
-        Updated {new Date(updatedAt).toLocaleString()}
+        Updated {formatDateTime(updatedAt)}
         {updatedBy ? ` by ${updatedBy}` : ""}
       </p>
 
       {allowed ? (
-        <Button size="sm" disabled={!dirty || isPending} onClick={save}>
-          Save {environment}
+        <Button disabled={!dirty || isPending} onClick={save}>
+          Save {ENV_LABELS[environment]}
         </Button>
       ) : null}
     </div>

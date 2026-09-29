@@ -2,6 +2,7 @@ import { inArray, like } from "drizzle-orm";
 
 import { auditLog, kycCases, users } from "../schema";
 import type { KycDocument, KycStatus, NewKycCase } from "../../modules/kyc/schema";
+import { CUSTOMER_EMAIL_DOMAINS } from "./refunds";
 import { SEED_EMAIL_DOMAIN } from "./users";
 import type { SeedContext, SeedModule } from "./types";
 
@@ -31,6 +32,46 @@ const CUSTOMERS = [
   "Rosa Martín",
   "Stefan Horvath",
   "Tara Mullins",
+  "Ulrike Brandt",
+  "Vikram Iyer",
+  "Wanjiru Kamau",
+  "Xavier Dubois",
+  "Yasmin Farouk",
+  "Zofia Wiśniewska",
+  "Adaeze Okafor",
+  "Bruno Carvalho",
+  "Chiara Lombardi",
+  "Dagny Holm",
+  "Emeka Eze",
+  "Fatima Zahra Benali",
+  "Gustav Lindqvist",
+  "Hana Kobayashi",
+  "Igor Petrenko",
+  "Julia Schneider",
+  "Kenji Watanabe",
+  "Leila Moradi",
+  "Mateo Fernández",
+  "Nadia Rahman",
+  "Oskar Nieminen",
+  "Priya Venkatesh",
+  "Quentin Moreau",
+  "Rahel Tesfaye",
+  "Sofia Papadopoulou",
+  "Thiago Ribeiro",
+  "Uma Krishnan",
+  "Viktor Szabó",
+  "Wiebke Hansen",
+  "Ximena Castillo",
+  "Yusuf Demir",
+  "Zainab Bello",
+  "Anders Solberg",
+  "Beatriz Moura",
+  "Cyrus Tehrani",
+  "Delfina Acosta",
+  "Elif Aydın",
+  "Florian Weber",
+  "Grace Achieng",
+  "Hamza Siddiqui",
 ] as const;
 
 /** 30 pending, 12 in review, 10 approved, 5 rejected, 3 escalated. */
@@ -47,12 +88,34 @@ export const SEED_CASE_COUNT = STATUS_PLAN.reduce(
   0,
 );
 
-const DAY_MS = 24 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
 
-const DECISION_REASONS: Record<string, string> = {
-  approved: "Documents verified against the register; no adverse media found.",
-  rejected: "Identity document expired and the selfie check did not match.",
-  escalated: "Politically exposed person match needs an approver's review.",
+const DECISION_REASONS: Record<string, readonly string[]> = {
+  approved: [
+    "Documents verified against the register; no adverse media found.",
+    "Passport MRZ and selfie match; address confirmed by utility bill.",
+    "Company registry entry matches the declared directorship.",
+    "Sanctions and PEP screening clear; source of funds documented.",
+    "Re-submitted proof of address is recent and matches the application.",
+    "Video call confirmed identity after the liveness check timed out.",
+  ],
+  rejected: [
+    "Identity document expired and the selfie check did not match.",
+    "Proof of address is older than three months and was not replaced.",
+    "Document shows signs of editing around the date of birth.",
+    "Customer did not respond to two requests for a clearer passport scan.",
+    "Name on the bank statement does not match the identity document.",
+    "Applicant is under the minimum age for an account.",
+  ],
+  escalated: [
+    "Politically exposed person match needs an approver's review.",
+    "Possible sanctions list hit on a close family member.",
+    "Declared income does not support the expected monthly volume.",
+    "Adverse media mentions an ongoing fraud investigation.",
+    "Same device fingerprint used by a previously rejected applicant.",
+    "Nationality is on the enhanced due diligence list.",
+  ],
 };
 
 const DECISION_ACTION: Record<string, string> = {
@@ -110,20 +173,33 @@ export function seedCaseFixtures(now = Date.now()): SeedCaseFixture[] {
       now - (89 - Math.floor((index * 89) / SEED_CASE_COUNT)) * DAY_MS,
     );
     const name = CUSTOMERS[index % CUSTOMERS.length];
-    const slug = name.toLowerCase().replace(/[^a-z]+/g, ".");
+    const slug = name
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace("ł", "l")
+      .replace("ı", "i")
+      .toLowerCase()
+      .replace(/[^a-z]+/g, ".");
+    const domain =
+      CUSTOMER_EMAIL_DOMAINS[index % CUSTOMER_EMAIL_DOMAINS.length];
 
     return {
       id: caseId(index),
       customerName: name,
-      customerEmail: `${slug}.${index + 1}@${SEED_EMAIL_DOMAIN}`,
+      customerEmail: `${slug}@${domain}`,
       country: COUNTRIES[index % COUNTRIES.length],
       riskScore: riskScoreFor(index),
       status,
       submittedAt,
-      decidedAt: decided ? new Date(submittedAt.getTime() + 2 * DAY_MS) : null,
-      decisionReason: decided ? DECISION_REASONS[status] : null,
+      decidedAt: decided
+        ? new Date(submittedAt.getTime() + (4 + ((index * 13) % 68)) * HOUR_MS)
+        : null,
+      decisionReason: decided
+        ? DECISION_REASONS[status][index % DECISION_REASONS[status].length]
+        : null,
       documents: documentsFor(index),
-      reviewerIndex: status === "pending" ? null : index,
+      // Every other pending case is already assigned, the rest wait unclaimed.
+      reviewerIndex: status === "pending" && index % 2 === 1 ? null : index,
     };
   });
 }

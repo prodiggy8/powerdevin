@@ -51,11 +51,10 @@ export function DecisionPanel({
             disabled={isPending}
           />
           <div className="flex gap-2">
-            <Button size="sm" disabled={isPending} onClick={() => decide("approve")}>
+            <Button disabled={isPending} onClick={() => decide("approve")}>
               Approve
             </Button>
             <Button
-              size="sm"
               variant="destructive"
               disabled={isPending || !note.trim()}
               onClick={() => decide("reject")}
@@ -66,7 +65,7 @@ export function DecisionPanel({
         </>
       ) : null}
       {canMarkPaid ? (
-        <Button size="sm" variant="outline" disabled={isPending} onClick={pay}>
+        <Button variant="outline" disabled={isPending} onClick={pay}>
           Mark paid
         </Button>
       ) : null}

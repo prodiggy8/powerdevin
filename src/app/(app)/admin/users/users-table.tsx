@@ -5,7 +5,8 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 
 import { DataTable, type DataTableQuery } from "@/core/data-table";
-import { ROLES, type Role } from "@/core/rbac";
+import { ROLE_LABELS, ROLES, isRole, type Role } from "@/core/rbac";
+import { formatDate } from "@/lib/format";
 import {
   Select,
   SelectContent,
@@ -43,20 +44,22 @@ function RoleSelect({ user, isSelf }: { user: UserRow; isSelf: boolean }) {
         startTransition(async () => {
           const result = await updateUserRole({ userId: user.id, role });
           if (result.ok) {
-            toast.success(`${user.email ?? user.id} is now ${role}`);
+            toast.success(
+              `${user.email ?? user.id} is now ${isRole(role) ? ROLE_LABELS[role] : role}`,
+            );
           } else {
             toast.error(result.error);
           }
         });
       }}
     >
-      <SelectTrigger className="h-8 w-[140px] capitalize">
+      <SelectTrigger className="h-8 w-[140px]">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
         {ROLES.map((role) => (
-          <SelectItem key={role} value={role} className="capitalize">
-            {role}
+          <SelectItem key={role} value={role}>
+            {ROLE_LABELS[role]}
           </SelectItem>
         ))}
       </SelectContent>
@@ -99,12 +102,7 @@ export function UsersTable({
       {
         accessorKey: "createdAt",
         header: "Created",
-        cell: ({ row }) =>
-          new Date(row.original.createdAt).toLocaleDateString(undefined, {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-          }),
+        cell: ({ row }) => formatDate(row.original.createdAt),
       },
       {
         accessorKey: "role",
@@ -132,7 +130,7 @@ export function UsersTable({
         {
           id: "role",
           label: "Role",
-          options: ROLES.map((role) => ({ label: role, value: role })),
+          options: ROLES.map((role) => ({ label: ROLE_LABELS[role], value: role })),
         },
       ]}
       searchPlaceholder="Search name or email…"

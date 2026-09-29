@@ -89,6 +89,6 @@ describe("seed:kyc", () => {
       .select({ value: count() })
       .from(kycCases)
       .where(isNotNull(kycCases.assignedTo));
-    expect(assigned.value).toBe(27);
+    expect(assigned.value).toBe(42);
   });
 });

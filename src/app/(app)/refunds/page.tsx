@@ -6,12 +6,6 @@ import { parseDataTableQuery } from "@/core/data-table";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   REFUND_FILTERS,
   REFUND_SORTABLE,
   listRefunds,
@@ -20,14 +14,12 @@ import {
 import { REFUND_THRESHOLD, formatMoney } from "@/modules/refunds/rules";
 import { RefundsTable, type RefundTableRow } from "./refunds-table";
 
-function StatCard({ label, value }: { label: string; value: string }) {
+function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <Card className="gap-0 shadow-none">
-      <CardHeader>
-        <CardDescription>{label}</CardDescription>
-        <CardTitle className="text-2xl tabular-nums">{value}</CardTitle>
-      </CardHeader>
-    </Card>
+    <div className="flex-1 space-y-1 px-4 py-3">
+      <dt className="text-xs text-muted-foreground uppercase">{label}</dt>
+      <dd className="text-lg tabular-nums">{value}</dd>
+    </div>
   );
 }
 
@@ -67,14 +59,14 @@ export default async function RefundsPage({
           </Button>
         }
       />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Pending" value={String(stats.pendingCount)} />
-        <StatCard label="Pending total" value={formatMoney(stats.pendingTotal)} />
-        <StatCard
+      <dl className="flex divide-x rounded-sm border">
+        <Stat label="Pending" value={String(stats.pendingCount)} />
+        <Stat label="Pending total" value={formatMoney(stats.pendingTotal)} />
+        <Stat
           label="Approved, not paid"
           value={formatMoney(stats.approvedUnpaidTotal)}
         />
-        <StatCard
+        <Stat
           label="Avg. hours to decision (30d)"
           value={
             stats.avgHoursToDecision === null
@@ -82,7 +74,7 @@ export default async function RefundsPage({
               : stats.avgHoursToDecision.toFixed(1)
           }
         />
-      </div>
+      </dl>
       <RefundsTable data={data} total={total} query={query} />
     </div>
   );

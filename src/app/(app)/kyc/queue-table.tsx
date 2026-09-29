@@ -2,10 +2,10 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { DataTable, type DataTableQuery } from "@/core/data-table";
+import { formatDate } from "@/lib/format";
 import { RISK_BANDS } from "@/modules/kyc/policy";
 import { RiskBadge, StatusBadge, STATUS_LABEL } from "@/modules/kyc/risk-badge";
 import type { KycCaseRow } from "@/modules/kyc/queries";
@@ -31,21 +31,6 @@ export function QueueTable({
   query: DataTableQuery;
   countries: string[];
 }) {
-  const router = useRouter();
-
-  /**
-   * The table body renders the rows of `data` in order, so the clicked row's
-   * position identifies the case without the core table knowing about links.
-   */
-  function openRow(event: React.MouseEvent<HTMLDivElement>) {
-    const cell = (event.target as HTMLElement).closest("td");
-    const row = cell?.closest("tr");
-    const body = row?.closest("tbody");
-    if (!row || !body) return;
-    const record = data[Array.from(body.rows).indexOf(row)];
-    if (record) router.push(`/kyc/${record.id}`);
-  }
-
   const columns = useMemo<ColumnDef<QueueRow, unknown>[]>(
     () => [
       {
@@ -90,21 +75,16 @@ export function QueueTable({
       {
         accessorKey: "submittedAt",
         header: "Submitted",
-        cell: ({ row }) =>
-          new Date(row.original.submittedAt).toLocaleDateString(undefined, {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-          }),
+        cell: ({ row }) => formatDate(row.original.submittedAt),
       },
     ],
     [],
   );
 
   return (
-    <div onClick={openRow} className="[&_tbody_tr]:cursor-pointer">
       <DataTable
         columns={columns}
+        rowHref={(row) => `/kyc/${row.id}`}
         data={data}
         total={total}
         query={query}
@@ -139,6 +119,5 @@ export function QueueTable({
         emptyMessage="No cases found"
         emptyDescription="Cases appear here as customers submit verification."
       />
-    </div>
   );
 }

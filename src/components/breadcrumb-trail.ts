@@ -4,6 +4,7 @@ const LABELS: Record<string, string> = {
   kyc: "KYC review",
   refunds: "Refunds",
   flags: "Feature flags",
+  new: "New",
 };
 
 /** Segments that only group routes and have no page of their own. */

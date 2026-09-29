@@ -2,9 +2,12 @@ import Link from "next/link";
 import { FileCheck, Flag, ReceiptText, Users } from "lucide-react";
 
 import { requireUser } from "@/core/auth";
+import type { DataTableQuery } from "@/core/data-table";
 import { hasRole } from "@/core/rbac";
+import { listFlags } from "@/modules/flags/queries";
+import { countKycCases } from "@/modules/kyc/queries";
+import { listRefunds } from "@/modules/refunds/queries";
 import { PageHeader } from "@/components/page-header";
-import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardDescription,
@@ -12,88 +15,81 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-const MODULES = [
-  {
-    href: "/kyc",
-    title: "KYC review queue",
-    description: "Triage and decide on identity verification cases.",
-    icon: FileCheck,
-    ready: true,
-  },
-  {
-    href: "/refunds",
-    title: "Refunds dashboard",
-    description: "Review refund requests and approvals above threshold.",
-    icon: ReceiptText,
-    ready: true,
-  },
-  {
-    href: "/flags",
-    title: "Feature flags",
-    description: "Toggle and audit feature flags per environment.",
-    icon: Flag,
-    ready: true,
-  },
-];
+function countQuery(filters: Record<string, string>): DataTableQuery {
+  return { page: 1, pageSize: 1, order: "desc", search: "", filters };
+}
+
+function ModuleCard({
+  href,
+  title,
+  description,
+  icon: Icon,
+  count,
+}: {
+  href: string;
+  title: string;
+  description: string;
+  icon: typeof FileCheck;
+  count?: string;
+}) {
+  return (
+    <Link href={href} className="group">
+      <Card className="h-full gap-0 shadow-none transition-colors group-hover:border-foreground/30">
+        <CardHeader>
+          <Icon className="mb-3 size-5 text-muted-foreground" />
+          <CardTitle className="text-base">{title}</CardTitle>
+          <CardDescription>{description}</CardDescription>
+          {count ? (
+            <p className="mt-3 text-sm font-medium tabular-nums">{count}</p>
+          ) : null}
+        </CardHeader>
+      </Card>
+    </Link>
+  );
+}
 
 export default async function HomePage() {
   const user = await requireUser();
 
+  const [pendingCases, awaitingApprover, prodFlags] = await Promise.all([
+    countKycCases(countQuery({ status: "pending" })),
+    listRefunds(countQuery({ status: "pending", threshold: "above" })),
+    listFlags(countQuery({ enabledIn: "prod" })),
+  ]);
+
   return (
     <div className="flex flex-1 flex-col gap-6">
-      <PageHeader
-        title="Operations console"
-        description={`Signed in as ${user.name ?? user.email}.`}
-        actions={
-          <Badge variant="secondary" className="h-7 px-2.5 capitalize">
-            {user.role}
-          </Badge>
-        }
-      />
+      <PageHeader title="Operations console" />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {MODULES.map((module) => {
-          const card = (
-            <Card
-              className={
-                module.ready
-                  ? "h-full gap-0 shadow-none transition-colors group-hover:border-foreground/30"
-                  : "gap-0 shadow-none"
-              }
-            >
-              <CardHeader>
-                <module.icon className="mb-3 size-5 text-muted-foreground" />
-                <CardTitle className="text-base">{module.title}</CardTitle>
-                <CardDescription>{module.description}</CardDescription>
-                {module.ready ? null : (
-                  <Badge variant="outline" className="mt-3 w-fit">
-                    Coming next
-                  </Badge>
-                )}
-              </CardHeader>
-            </Card>
-          );
-          return module.ready ? (
-            <Link key={module.href} href={module.href} className="group">
-              {card}
-            </Link>
-          ) : (
-            <div key={module.href}>{card}</div>
-          );
-        })}
-
+        <ModuleCard
+          href="/kyc"
+          title="KYC review queue"
+          description="Triage and decide on identity verification cases."
+          icon={FileCheck}
+          count={`${pendingCases} pending`}
+        />
+        <ModuleCard
+          href="/refunds"
+          title="Refunds dashboard"
+          description="Review refund requests and approvals above threshold."
+          icon={ReceiptText}
+          count={`${awaitingApprover.total} awaiting approver`}
+        />
+        <ModuleCard
+          href="/flags"
+          title="Feature flags"
+          description="Toggle feature flags per environment."
+          icon={Flag}
+          count={`${prodFlags.total} ${prodFlags.total === 1 ? "flag" : "flags"} on in prod`}
+        />
         {hasRole(user.role, "admin") ? (
-          <Link href="/admin/users" className="group">
-            <Card className="h-full gap-0 shadow-none transition-colors group-hover:border-foreground/30">
-              <CardHeader>
-                <Users className="mb-3 size-5 text-muted-foreground" />
-                <CardTitle className="text-base">Users &amp; roles</CardTitle>
-                <CardDescription>
-                  Manage access. Every role change is written to the audit log.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          </Link>
+          <ModuleCard
+            href="/admin/users"
+            title="Users & roles"
+            description="Manage staff access and roles."
+            icon={Users}
+          />
         ) : null}
       </div>
     </div>

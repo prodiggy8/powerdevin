@@ -100,7 +100,7 @@ export default async function LoginPage({
         </Card>
 
         <p className="text-center text-xs text-muted-foreground">
-          Access is logged. Role changes are written to the audit trail.
+          Staff accounts only. Access is managed by an admin.
         </p>
       </div>
     </main>

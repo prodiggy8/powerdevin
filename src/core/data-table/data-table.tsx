@@ -70,7 +70,11 @@ export type DataTableProps<TData, TValue> = {
   searchPlaceholder?: string;
   emptyMessage?: string;
   emptyDescription?: string;
+  /** Makes each row a link: clickable, focusable, and opened with Enter. */
+  rowHref?: (row: TData) => string;
 };
+
+const INTERACTIVE = "a, button, input, select, textarea, [role='checkbox']";
 
 /**
  * Generic table wired for server-side pagination, sorting and filtering: all
@@ -86,6 +90,7 @@ export function DataTable<TData, TValue>({
   searchPlaceholder = "Search…",
   emptyMessage = "No results.",
   emptyDescription,
+  rowHref,
 }: DataTableProps<TData, TValue>) {
   const router = useRouter();
   const pathname = usePathname();
@@ -203,7 +208,6 @@ export function DataTable<TData, TValue>({
               .map((column) => (
                 <DropdownMenuCheckboxItem
                   key={column.id}
-                  className="capitalize"
                   checked={column.getIsVisible()}
                   onCheckedChange={(checked) =>
                     column.toggleVisibility(Boolean(checked))
@@ -291,15 +295,48 @@ export function DataTable<TData, TValue>({
                 </TableCell>
               </TableRow>
             ) : (
-              table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
+              table.getRowModel().rows.map((row) => {
+                const href = rowHref?.(row.original);
+                return (
+                  <TableRow
+                    key={row.id}
+                    tabIndex={href ? 0 : undefined}
+                    className={
+                      href
+                        ? "cursor-pointer focus-visible:bg-muted/50 focus-visible:outline-none"
+                        : undefined
+                    }
+                    onClick={
+                      href
+                        ? (event) => {
+                            const target = event.target as HTMLElement;
+                            if (target.closest(INTERACTIVE)) return;
+                            router.push(href);
+                          }
+                        : undefined
+                    }
+                    onKeyDown={
+                      href
+                        ? (event) => {
+                            if (event.key !== "Enter") return;
+                            if (event.target !== event.currentTarget) return;
+                            event.preventDefault();
+                            router.push(href);
+                          }
+                        : undefined
+                    }
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>

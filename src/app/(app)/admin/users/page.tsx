@@ -75,7 +75,7 @@ export default async function AdminUsersPage({
     <div className="flex flex-1 flex-col gap-6">
       <PageHeader
         title="Users & roles"
-        description="Role changes take effect on the user's next request and are written to the audit log."
+        description="Role changes take effect on the user's next request."
         actions={
           <Badge variant="outline" className="h-7 px-2.5">
             {total} {total === 1 ? "user" : "users"}

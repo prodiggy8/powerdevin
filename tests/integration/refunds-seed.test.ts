@@ -1,7 +1,7 @@
 import { count, eq, like } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 
-import { approvalRequests, auditLog, refundRequests } from "@/db/schema";
+import { approvalRequests, auditLog, refundRequests, users } from "@/db/schema";
 import { runSeed } from "@/db/seed/index";
 import { SEED_ORDER_PREFIX } from "@/db/seed/refunds";
 import { testDb } from "./db";
@@ -51,5 +51,28 @@ describe("db:seed refunds", () => {
     expect(await seededRefunds()).toHaveLength(80);
     const [auditReset] = await db.select({ value: count() }).from(auditLog);
     expect(auditReset.value).toBe(auditBefore.value);
+  });
+
+  it("--reset keeps real refunds that share the order prefix", async () => {
+    await runSeed({ db, log: silent });
+    const [staff] = await db
+      .insert(users)
+      .values({ name: "Real Analyst", email: "real.analyst@contoso.com" })
+      .returning();
+    await db.insert(refundRequests).values({
+      orderRef: `${SEED_ORDER_PREFIX}10492`,
+      customerName: "Real Customer",
+      customerEmail: "real.customer@gmail.com",
+      amount: "25.00",
+      currency: "USD",
+      reason: "customer_request",
+      requestedBy: staff.id,
+    });
+
+    await runSeed({ db, reset: true, log: silent });
+
+    const refs = (await seededRefunds()).map((row) => row.orderRef);
+    expect(refs).toHaveLength(81);
+    expect(refs).toContain(`${SEED_ORDER_PREFIX}10492`);
   });
 });

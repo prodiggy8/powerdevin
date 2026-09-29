@@ -15,13 +15,6 @@ import {
 import type { KycStatus } from "@/modules/kyc/schema";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -34,6 +27,12 @@ const DECISION_LABEL: Record<Decision, string> = {
   approve: "Approve",
   reject: "Reject",
   escalate: "Escalate",
+};
+
+const DECISION_DONE: Record<Decision, string> = {
+  approve: "Case approved.",
+  reject: "Case rejected.",
+  escalate: "Case escalated.",
 };
 
 export function DecisionPanel({
@@ -81,16 +80,16 @@ export function DecisionPanel({
   }
 
   return (
-    <Card className="shadow-none">
-      <CardHeader>
-        <CardTitle className="text-base">Decision</CardTitle>
-        <CardDescription>
+    <section className="space-y-3">
+      <div className="space-y-1">
+        <h2 className="text-sm font-semibold">Decision</h2>
+        <p className="text-sm text-muted-foreground">
           {decidable.ok
             ? `Every decision needs a reason of at least ${MIN_REASON_LENGTH} characters.`
             : decidable.error}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+        </p>
+      </div>
+      <div className="space-y-4 rounded-sm border p-3">
         {claimable.ok ? (
           <Button
             variant="outline"
@@ -119,7 +118,7 @@ export function DecisionPanel({
                   onClick={() =>
                     run(
                       () => decideCase({ caseId, decision, reason }),
-                      `Case ${decision}d.`,
+                      DECISION_DONE[decision],
                     )
                   }
                 >
@@ -158,7 +157,7 @@ export function DecisionPanel({
             </Button>
           </div>
         ) : null}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }

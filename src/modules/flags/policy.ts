@@ -3,6 +3,18 @@ import type { FlagEnvironment } from "./schema";
 
 export const FLAG_ENVIRONMENTS = ["dev", "staging", "prod"] as const;
 
+export const ENV_LABELS: Record<FlagEnvironment, string> = {
+  dev: "Dev",
+  staging: "Staging",
+  prod: "Prod",
+};
+
+export const ACTION_LABELS: Record<string, string> = {
+  "feature_flag.created": "Created",
+  "feature_flag.archived": "Archived",
+  "feature_flag_state.updated": "State changed",
+};
+
 /** Lowercase snake_case, starting with a letter: `instant_refunds_v2`. */
 export const FLAG_KEY_PATTERN = /^[a-z][a-z0-9]*(_[a-z0-9]+)*$/;
 

@@ -18,6 +18,7 @@ import type { Role } from "@/core/rbac";
 import { setFlagState } from "@/modules/flags/actions";
 import {
   canChangeEnvironment,
+  ENV_LABELS,
   PROD_REASON_MIN_LENGTH,
 } from "@/modules/flags/policy";
 import type { FlagEnvironment } from "@/modules/flags/schema";
@@ -58,7 +59,7 @@ export function FlagStateSwitch({
         setReasonOpen(false);
         setReason("");
         toast.success(
-          `${flagKey} is now ${next ? "on" : "off"} in ${environment}.`,
+          `${flagKey} is now ${next ? "on" : "off"} in ${ENV_LABELS[environment]}.`,
         );
       } else {
         toast.error(result.error);
@@ -71,7 +72,7 @@ export function FlagStateSwitch({
       <Switch
         checked={enabled}
         disabled={!allowed || isPending}
-        aria-label={`${flagKey} in ${environment}`}
+        aria-label={`${flagKey} in ${ENV_LABELS[environment]}`}
         onCheckedChange={(next) => {
           if (environment === "prod") {
             setReasonOpen(true);
