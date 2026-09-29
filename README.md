@@ -1,90 +1,233 @@
 # PowerDevin
 
 Internal operations console replacing three Power Apps: a KYC review queue, a
-refunds dashboard, and a feature-flag admin panel. See
-[docs/00-scope.md](docs/00-scope.md) for the brief.
+refunds dashboard, and a feature-flag admin panel. Built with Devin as a
+proof of concept for a build-vs-buy evaluation. See
+[docs/00-scope.md](docs/00-scope.md) for the brief and
+[docs/PLAYBOOK-new-module.md](docs/PLAYBOOK-new-module.md) for how a new
+module is added.
 
-Stack: Next.js (App Router) · Postgres + Drizzle · Auth.js v5 with Microsoft
-Entra ID SSO · Tailwind + shadcn/ui · TanStack Table.
+Stack: Next.js 16 (App Router) · Postgres 17 + Drizzle · Auth.js v5 with
+Microsoft Entra ID SSO · Tailwind + shadcn/ui · TanStack Table · Vitest.
 
 ## Layout
 
 ```
-src/core/      auth, rbac, audit, approvals, data-table, schema-form
-src/modules/   one directory per app (kyc, refunds, flags)
-src/db/        drizzle schema, migrations, client
-src/app/       routes
-docs/          project brief and notes
+src/core/        auth, rbac, audit, approvals, data-table, schema-form
+src/modules/     one directory per app: kyc, refunds, flags (schema, actions, queries)
+src/app/(app)/   routes: /, /kyc, /refunds, /flags, /admin/users
+src/db/          drizzle client, schema index, migrations, seed
+tests/           unit (no database) and integration (Postgres)
+docs/            brief and module playbook
 ```
+
+Every write in every module goes through `withAudit` inside the same
+database transaction, so a mutation and its audit row commit or roll back
+together. Roles are `analyst`, `approver` and `admin`, ranked in that order,
+and are enforced in server actions, not only in the UI.
+
+## Prerequisites
+
+- Node 20 or newer (developed on Node 24) and npm
+- Docker with Compose
+- A Microsoft account to sign in with, and an Entra app registration (below)
 
 ## Getting started
 
 ```bash
-cp .env.example .env.local        # fill AUTH_SECRET and the Entra credentials
+cp .env.example .env.local        # then fill in AUTH_SECRET and the Entra values
 npm install
-npm run db:up                     # postgres 17 via docker compose
-npm run db:migrate                # apply drizzle migrations
-npm run dev
+npm run db:up                     # Postgres 17 in Docker on localhost:5432
+npm run db:migrate                # apply all migrations in src/db/migrations
+npm run db:seed                   # demo data for users and all three modules
+npm run dev                       # http://localhost:3000
 ```
 
-`AUTH_SECRET` can be generated with `openssl rand -base64 32`.
+Generate `AUTH_SECRET` with `openssl rand -base64 32`.
 
-### Microsoft Entra ID
+Sign in with the Microsoft account whose email you put in `SEED_ADMIN_EMAIL`.
+That first sign-in creates your user as `admin`. Every other account that
+signs in starts as `analyst`, and you promote them at `/admin/users`.
 
-The provider is configured against the `common` issuer so personal, work, and
-school Microsoft accounts can sign in. Register the app in Entra as a **Web**
-platform with redirect URI
-`http://localhost:3000/api/auth/callback/microsoft-entra-id` (plus the deployed
-origin) and set `AUTH_MICROSOFT_ENTRA_ID_ID` and
-`AUTH_MICROSOFT_ENTRA_ID_SECRET`.
+If port 5432 is already taken on your machine, change the host port in
+`docker-compose.yml` (for example `"5433:5432"`) and update `DATABASE_URL`
+and `DATABASE_URL_TEST` in `.env.local` to match.
 
-Supported account types must be "Accounts in any organizational directory and
-personal Microsoft accounts". A registration limited to personal accounts
-rejects the `common` endpoint with
-`The request is not valid for the application's 'userAudience' configuration`;
-either widen the registration or point `AUTH_MICROSOFT_ENTRA_ID_ISSUER` at the
-consumer tenant
-`https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0`
-(`/consumers/v2.0` does not work — its discovery document advertises the tenant
-GUID as the issuer, so Auth.js rejects the mismatch).
+## Microsoft Entra ID setup
 
-Roles live in the `users` table (`admin`, `approver`, `analyst`). The first user
-whose email matches `SEED_ADMIN_EMAIL` is created as an admin; everyone else
-starts as an analyst. Admins change roles at `/admin/users`, and every change is
-written to `audit_log` in the same transaction as the update.
+The demo uses an app registration limited to **personal Microsoft accounts**
+(outlook.com, hotmail.com, live.com). That is deliberate: anyone can try the
+repo with their own account without access to a company tenant. In
+production the registration would be single-tenant, pinned to the client's
+directory, and roles would come from Entra groups. See the last paragraph.
+
+Register the app in the [Entra admin center](https://entra.microsoft.com)
+under App registrations:
+
+1. **Supported account types:** "Personal Microsoft accounts only".
+2. **Platform:** Web. **Redirect URI:**
+   `http://localhost:3000/api/auth/callback/microsoft-entra-id`. Add the
+   deployed origin as a second URI when you deploy.
+3. **Certificates & secrets:** create a client secret and copy the value
+   immediately, it is shown once.
+4. No extra API permissions are needed. Auth.js requests
+   `openid profile email User.Read`, which the default `User.Read`
+   permission covers.
+
+Then fill `.env.local`:
+
+```
+AUTH_MICROSOFT_ENTRA_ID_ID=<Application (client) ID from the Overview page>
+AUTH_MICROSOFT_ENTRA_ID_SECRET=<client secret value>
+AUTH_MICROSOFT_ENTRA_ID_ISSUER=https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0
+SEED_ADMIN_EMAIL=<the personal Microsoft account you will sign in with>
+```
+
+The issuer is the fixed tenant ID of the Microsoft consumer directory. Two
+values that look right and do not work:
+
+- `.../common/v2.0` fails with
+  `The request is not valid for the application's 'userAudience' configuration`,
+  because a personal-accounts-only registration rejects the common endpoint.
+- `.../consumers/v2.0` fails inside Auth.js, because its discovery document
+  advertises the tenant GUID as the issuer and the mismatch is rejected.
+
+If you would rather accept work and school accounts as well, change the
+registration's supported account types to "Accounts in any organizational
+directory and personal Microsoft accounts" and set the issuer to
+`https://login.microsoftonline.com/common/v2.0`.
+
+**Production.** Set supported account types to "Accounts in this
+organizational directory only", set the issuer to
+`https://login.microsoftonline.com/<tenant-id>/v2.0`, and replace
+`SEED_ADMIN_EMAIL` with a mapping from Entra groups or App Roles to the
+three internal roles in the JWT callback. Personal accounts carry no group
+claims, which is the only reason the seed-admin variable exists.
+
+## Database migrations
+
+Migrations are plain SQL files in `src/db/migrations`, generated by
+drizzle-kit from the TypeScript schema and tracked in
+`src/db/migrations/meta/_journal.json`. The migrator applies, in order,
+every journal entry newer than the last one recorded in the database's
+`drizzle.__drizzle_migrations` table.
+
+### Changing the schema
+
+1. Edit the Drizzle schema. Core tables live in `src/db/schema/`, module
+   tables in `src/modules/<module>/schema.ts` and are re-exported from
+   `src/db/schema/index.ts`.
+2. Generate a migration with a descriptive name:
+   ```bash
+   npm run db:generate -- --name kyc_add_reason_code
+   ```
+   This writes `NNNN_kyc_add_reason_code.sql` plus a snapshot and a journal
+   entry. Read the SQL before committing it.
+3. Apply it locally and run the tests:
+   ```bash
+   npm run db:migrate
+   npm run test:all
+   ```
+4. Commit the SQL, the snapshot and the journal together. Never edit a
+   migration that has already been merged; add a new one.
+
+### Working across branches
+
+The journal orders migrations by creation timestamp, so two branches that
+each generate a migration will collide when merged: the one created earlier
+is skipped on any database that already applied the later one, and you get
+`relation "..." does not exist` at seed or run time.
+
+Before opening a PR that adds a migration, rebase onto `main` and, if
+`main` gained a migration in the meantime, delete yours and regenerate it so
+it is numbered and timestamped after everything on `main`:
+
+```bash
+git rebase origin/main
+rm src/db/migrations/NNNN_<yours>.sql src/db/migrations/meta/NNNN_snapshot.json
+# remove your entry from src/db/migrations/meta/_journal.json
+npm run db:generate -- --name <yours>
+```
+
+### Resetting the local database
+
+Switching between branches that carry different migrations leaves the
+local database's migration table out of step with the journal. The demo
+data is fully reseedable, so the fix is a reset:
+
+```bash
+docker compose down -v && npm run db:up && npm run db:migrate && npm run db:seed
+```
+
+Do this whenever `db:migrate` reports success but a table is missing, or
+fails with `relation "..." already exists`.
+
+## Seed data
+
+`npm run db:seed` loads `.env.local` then `.env` and inserts demo data for
+every module, in dependency order:
+
+| module | data |
+| --- | --- |
+| users | 40 display-only users across all three roles, 25 role-change audit rows |
+| flags | 25 feature flags (3 archived), 75 per-environment states, 40 audit rows |
+| refunds | 80 refund requests over 90 days, 28 approval requests above the $500 threshold, 211 audit rows |
+| kyc | 60 KYC cases across all statuses and risk bands, 18 audit rows |
+
+Seeded users live on the reserved `example.invalid` domain and have no
+`accounts` rows, so they can never sign in or collide with a real Microsoft
+identity. The real admin still comes from `SEED_ADMIN_EMAIL` on first login.
+
+The seed is idempotent. `npm run db:seed -- --reset` deletes seeded rows
+first and leaves real users untouched. Each module's seed lives in
+`src/db/seed/<module>.ts` and is registered in `src/db/seed/index.ts`.
+
+## Tests
+
+```bash
+npm run test               # unit tests, no database required
+npm run test:integration   # against the powerdevin_test database
+npm run test:all           # both
+```
+
+Unit tests in `tests/unit` need no database. They cover role ranking, the
+data-table query parser, each module's pure policy rules (KYC risk bands and
+who may decide, refund thresholds and self-approval, flag rollout limits),
+the seed generators, and the breadcrumb helper.
+
+Integration tests in `tests/integration` run against the docker-compose
+Postgres in a separate `powerdevin_test` database. The global setup creates
+it if missing and applies the migrations, and every table is truncated
+between tests. They cover the audit-in-transaction guarantee, each module's
+server actions (role rejections, threshold routing, final-state rules, and
+that every successful write produces exactly its audit row), and seed
+idempotency for every module. Override the connection with
+`DATABASE_URL_TEST`; the default matches `docker-compose.yml`.
 
 ## Scripts
 
 | script | purpose |
 | --- | --- |
-| `npm run dev` | dev server |
-| `npm run build` | production build |
+| `npm run dev` | dev server on port 3000 |
+| `npm run build` / `npm run start` | production build and server (set `AUTH_TRUST_HOST=true` off Vercel) |
 | `npm run lint` | eslint |
 | `npm run typecheck` | `tsc --noEmit` |
-| `npm run db:generate` | generate a migration from the schema |
-| `npm run db:migrate` | apply migrations |
-| `npm run db:studio` | drizzle studio |
+| `npm run db:up` | start Postgres via docker compose |
+| `npm run db:generate -- --name <name>` | generate a migration from the schema |
+| `npm run db:migrate` | apply pending migrations |
 | `npm run db:seed` | seed demo data (`-- --reset` to replace it) |
-| `npm run test` | unit tests, no database required |
-| `npm run test:integration` | integration tests against `powerdevin_test` |
+| `npm run db:studio` | Drizzle Studio |
+| `npm run test` | unit tests |
+| `npm run test:integration` | integration tests |
 | `npm run test:all` | both suites |
 
-## Seed data
+## What is stubbed or out of scope
 
-`npm run db:seed` loads `.env.local` then `.env` and inserts 40 display-only
-users across all three roles plus 25 `user.role.updated` audit rows. Seeded
-accounts live on the reserved `example.invalid` domain and have no `accounts`
-rows, so they can never sign in or collide with a real Microsoft identity — the
-first real admin still comes from `SEED_ADMIN_EMAIL` on first login. The seed is
-idempotent (upsert by email); `npm run db:seed -- --reset` deletes the seeded
-rows first and leaves real users untouched. Modules live in `src/db/seed/`
-(`users.ts` today, `kyc.ts` and friends later) and are registered in
-`src/db/seed/index.ts`.
-
-## Tests
-
-Unit tests (`tests/unit`) are pure and need no database. Integration tests
-(`tests/integration`) run against the docker-compose Postgres in a separate
-`powerdevin_test` database: the global setup creates it if missing and applies
-the Drizzle migrations, and every table is truncated between tests. Override the
-connection with `DATABASE_URL_TEST`; the default matches `docker-compose.yml`.
+- Real SSO is limited to personal accounts and roles are stored locally,
+  as described above.
+- KYC documents are a JSON stub on the case. There is no file upload or
+  document store.
+- No deployment configuration. The app runs anywhere Node and Postgres do.
+- No read-access logging, audit export, or retention policy on `audit_log`.
+- No CI workflow yet. Run `npm run lint && npm run typecheck && npm run test:all`
+  before opening a PR.
