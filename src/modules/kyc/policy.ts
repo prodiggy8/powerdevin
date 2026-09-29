@@ -79,9 +79,27 @@ export function canDecide(
   return { ok: true };
 }
 
-export function canClaim(candidate: { status: KycStatus }): PolicyCheck {
+/** Only admins may take a case that is already assigned to someone else. */
+export function canClaim(
+  actor: { id: string; role: Role },
+  candidate: {
+    status: KycStatus;
+    assignedTo: string | null;
+    assigneeName?: string | null;
+  },
+): PolicyCheck {
   if (isFinal(candidate.status)) {
     return { ok: false, error: "This case is already final." };
+  }
+  if (
+    candidate.assignedTo &&
+    candidate.assignedTo !== actor.id &&
+    !hasRole(actor.role, "admin")
+  ) {
+    return {
+      ok: false,
+      error: `This case is assigned to ${candidate.assigneeName || "another user"}.`,
+    };
   }
   return { ok: true };
 }
