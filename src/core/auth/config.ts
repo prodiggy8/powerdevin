@@ -7,6 +7,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { accounts, sessions, users, verificationTokens } from "@/db/schema";
 import { isRole, type Role } from "@/core/rbac";
+import { entraProfileToUser } from "./entra-profile";
 
 /**
  * The only sign-in path is Microsoft SSO, so the first admin cannot be granted
@@ -65,14 +66,7 @@ const baseConfig = {
       clientId: process.env.AUTH_MICROSOFT_ENTRA_ID_ID,
       clientSecret: process.env.AUTH_MICROSOFT_ENTRA_ID_SECRET,
       issuer: process.env.AUTH_MICROSOFT_ENTRA_ID_ISSUER,
-      // The stock provider inlines the Graph profile photo as a base64 data URI,
-      // which bloats both the users row and the session cookie.
-      profile: (profile) => ({
-        id: profile.sub as string,
-        name: profile.name ?? null,
-        email: profile.email as string,
-        image: null,
-      }),
+      profile: entraProfileToUser,
     }),
   ],
   callbacks: {
