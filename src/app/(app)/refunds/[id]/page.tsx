@@ -63,7 +63,7 @@ export default async function RefundDetailPage({
   const decidable =
     refund.status === "pending" &&
     canDecide(actor.role, refund.amount) &&
-    !(aboveThreshold && isRequester);
+    !isRequester;
   const payable = canMarkPaid(actor.role, refund.status);
 
   let blockedReason: string | null = null;

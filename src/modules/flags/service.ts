@@ -137,28 +137,34 @@ export async function setFlagState(
   if (!flag) return { ok: false, error: "Flag not found." };
   if (flag.archived) return { ok: false, error: "This flag is archived." };
 
-  const state = await db.query.featureFlagStates.findFirst({
-    where: and(
-      eq(featureFlagStates.flagId, flagId),
-      eq(featureFlagStates.environment, environment),
-    ),
-  });
-  if (!state) return { ok: false, error: "Environment state not found." };
+  return db.transaction(async (tx) => {
+    const [state] = await tx
+      .select()
+      .from(featureFlagStates)
+      .where(
+        and(
+          eq(featureFlagStates.flagId, flagId),
+          eq(featureFlagStates.environment, environment),
+        ),
+      )
+      .for("update");
+    if (!state) {
+      return { ok: false as const, error: "Environment state not found." };
+    }
 
-  const check = checkStateChange({
-    role: actor.role,
-    environment,
-    reason,
-    currentRolloutPercent: state.rolloutPercent,
-    nextRolloutPercent: rolloutPercent,
-  });
-  if (!check.ok) return { ok: false, error: check.error };
+    const check = checkStateChange({
+      role: actor.role,
+      environment,
+      reason,
+      currentRolloutPercent: state.rolloutPercent,
+      nextRolloutPercent: rolloutPercent,
+    });
+    if (!check.ok) return { ok: false as const, error: check.error };
 
-  if (state.enabled === enabled && state.rolloutPercent === rolloutPercent) {
-    return { ok: true };
-  }
+    if (state.enabled === enabled && state.rolloutPercent === rolloutPercent) {
+      return { ok: true as const };
+    }
 
-  await db.transaction(async (tx) => {
     const [after] = await tx
       .update(featureFlagStates)
       .set({
@@ -187,9 +193,9 @@ export async function setFlagState(
         reason: reason?.trim() || null,
       },
     });
-  });
 
-  return { ok: true };
+    return { ok: true as const };
+  });
 }
 
 export async function archiveFlag(

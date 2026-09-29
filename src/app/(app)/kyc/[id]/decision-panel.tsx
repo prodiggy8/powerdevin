@@ -40,13 +40,19 @@ export function DecisionPanel({
   caseId,
   status,
   riskScore,
+  userId,
   role,
+  assignedTo,
+  assigneeName,
   reviewers,
 }: {
   caseId: string;
   status: KycStatus;
   riskScore: number;
+  userId: string;
   role: Role;
+  assignedTo: string | null;
+  assigneeName: string | null;
   reviewers: { id: string; label: string }[];
 }) {
   const router = useRouter();
@@ -54,7 +60,10 @@ export function DecisionPanel({
   const [assignee, setAssignee] = useState("");
   const [isPending, startTransition] = useTransition();
 
-  const claimable = canClaim({ status });
+  const claimable = canClaim(
+    { id: userId, role },
+    { status, assignedTo, assigneeName },
+  );
   const decidable = canDecide(role, { status, riskScore });
   const reasonTooShort = reason.trim().length < MIN_REASON_LENGTH;
 

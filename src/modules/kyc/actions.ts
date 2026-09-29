@@ -75,7 +75,17 @@ export async function claimCase(input: { caseId: string }): Promise<ActionResult
       return { ok: false as const, error: "Case not found." };
     }
 
-    const allowed = canClaim(before);
+    const assignee = before.assignedTo
+      ? await tx.query.users.findFirst({
+          where: eq(users.id, before.assignedTo),
+          columns: { name: true, email: true },
+        })
+      : undefined;
+
+    const allowed = canClaim(actor, {
+      ...before,
+      assigneeName: assignee?.name ?? assignee?.email,
+    });
     if (!allowed.ok) {
       return { ok: false as const, error: allowed.error };
     }

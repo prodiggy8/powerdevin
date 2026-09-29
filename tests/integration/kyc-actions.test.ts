@@ -121,6 +121,33 @@ describe("claimCase", () => {
     ).toEqual({ ok: false, error: "Escalated cases need an approver." });
   });
 
+  it("refuses a case assigned to another user and leaves it untouched", async () => {
+    const owner = await createUser("owner@contoso.com", "analyst");
+    const approver = await createUser("approver@contoso.com", "approver");
+    const kycCase = await createCase({ status: "in_review", assignedTo: owner.id });
+    signIn(approver);
+
+    expect(await claimCase({ caseId: kycCase.id })).toEqual({
+      ok: false,
+      error: "This case is assigned to owner@contoso.com.",
+    });
+    expect((await reload(kycCase.id))?.assignedTo).toBe(owner.id);
+    expect(await auditFor(kycCase.id)).toHaveLength(0);
+  });
+
+  it("lets an admin claim a case assigned to another user", async () => {
+    const owner = await createUser("owner@contoso.com", "analyst");
+    const admin = await createUser("admin@contoso.com", "admin");
+    const kycCase = await createCase({ status: "in_review", assignedTo: owner.id });
+    signIn(admin);
+
+    expect(await claimCase({ caseId: kycCase.id })).toEqual({ ok: true });
+    expect((await reload(kycCase.id))?.assignedTo).toBe(admin.id);
+    const [entry] = await auditFor(kycCase.id);
+    expect(entry.before).toMatchObject({ assignedTo: owner.id });
+    expect(entry.after).toMatchObject({ assignedTo: admin.id });
+  });
+
   it("refuses a case that is already final", async () => {
     const analyst = await createUser("analyst@contoso.com", "analyst");
     const kycCase = await createCase({ status: "approved" });

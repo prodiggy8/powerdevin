@@ -197,6 +197,9 @@ export async function decideRefund(input: {
   if (current.status !== "pending") {
     return { ok: false, error: "Only pending refunds can be decided." };
   }
+  if (current.requestedBy === actor.id) {
+    return { ok: false, error: secondApproverError("self-approval") };
+  }
   if (!canDecide(actor.role, current.amount)) {
     return {
       ok: false,

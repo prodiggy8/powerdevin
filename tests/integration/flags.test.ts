@@ -250,6 +250,50 @@ describe("setFlagState", () => {
     expect(await auditRows("feature_flag_state.updated")).toHaveLength(2);
   });
 
+  it("checks a prod change against the state a concurrent writer committed", async () => {
+    const admin = await actorWithRole("admin");
+    const flagId = await flagOwnedBy(admin);
+    const toFifty = await setFlagState(db, admin, {
+      flagId,
+      environment: "prod",
+      enabled: true,
+      rolloutPercent: 50,
+      reason: "starting the staged rollout",
+    });
+    expect(toFifty.ok).toBe(true);
+
+    const prod = await stateOf(flagId, "prod");
+    let pending: ReturnType<typeof setFlagState> | undefined;
+    // A concurrent writer holds the row and moves prod to 100 while the
+    // request below, a legal 50-point move from the committed 50, is in flight.
+    await db.transaction(async (tx) => {
+      await tx
+        .select()
+        .from(featureFlagStates)
+        .where(eq(featureFlagStates.id, prod.id))
+        .for("update");
+      await tx
+        .update(featureFlagStates)
+        .set({ rolloutPercent: 100 })
+        .where(eq(featureFlagStates.id, prod.id));
+      pending = setFlagState(db, admin, {
+        flagId,
+        environment: "prod",
+        enabled: true,
+        rolloutPercent: 0,
+        reason: "rolling back the staged rollout",
+      });
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    });
+
+    const result = await pending;
+    expect(result).toMatchObject({ ok: false });
+    if (result?.ok !== false) return;
+    expect(result.error).toMatch(/100 → 0/);
+    expect((await stateOf(flagId, "prod")).rolloutPercent).toBe(100);
+    expect(await auditRows("feature_flag_state.updated")).toHaveLength(1);
+  });
+
   it("rejects a rollout percent outside 0-100", async () => {
     const admin = await actorWithRole("admin");
     const flagId = await flagOwnedBy(admin);

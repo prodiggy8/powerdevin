@@ -95,10 +95,47 @@ describe("statusAfterClaim", () => {
 });
 
 describe("canClaim", () => {
+  const analyst = { id: "u-analyst", role: "analyst" } as const;
+  const approver = { id: "u-approver", role: "approver" } as const;
+  const admin = { id: "u-admin", role: "admin" } as const;
+
   it("allows open cases and refuses final ones", () => {
-    expect(canClaim({ status: "pending" }).ok).toBe(true);
-    expect(canClaim({ status: "escalated" }).ok).toBe(true);
-    expect(canClaim({ status: "rejected" }).ok).toBe(false);
+    expect(canClaim(analyst, { status: "pending", assignedTo: null }).ok).toBe(true);
+    expect(canClaim(analyst, { status: "escalated", assignedTo: null }).ok).toBe(
+      true,
+    );
+    expect(canClaim(analyst, { status: "rejected", assignedTo: null }).ok).toBe(
+      false,
+    );
+  });
+
+  it("lets the current assignee claim their own case again", () => {
+    expect(
+      canClaim(analyst, { status: "in_review", assignedTo: analyst.id }).ok,
+    ).toBe(true);
+  });
+
+  it("refuses a case assigned to someone else unless the actor is admin", () => {
+    const candidate = {
+      status: "in_review",
+      assignedTo: "u-other",
+      assigneeName: "Dana Reviewer",
+    } as const;
+    expect(canClaim(analyst, candidate)).toEqual({
+      ok: false,
+      error: "This case is assigned to Dana Reviewer.",
+    });
+    expect(canClaim(approver, candidate)).toEqual({
+      ok: false,
+      error: "This case is assigned to Dana Reviewer.",
+    });
+    expect(canClaim(admin, candidate)).toEqual({ ok: true });
+  });
+
+  it("still refuses a final case for an admin", () => {
+    expect(
+      canClaim(admin, { status: "approved", assignedTo: "u-other" }).ok,
+    ).toBe(false);
   });
 });
 

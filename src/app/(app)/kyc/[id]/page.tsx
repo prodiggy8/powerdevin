@@ -99,7 +99,10 @@ export default async function KycCasePage({
           caseId={kycCase.id}
           status={kycCase.status}
           riskScore={kycCase.riskScore}
+          userId={user.id}
           role={user.role}
+          assignedTo={kycCase.assignedTo}
+          assigneeName={kycCase.assignee?.name ?? kycCase.assignee?.email ?? null}
           reviewers={reviewers.map((reviewer) => ({
             id: reviewer.id,
             label: reviewer.name ?? reviewer.email ?? reviewer.id,
