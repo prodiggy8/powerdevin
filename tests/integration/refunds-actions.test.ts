@@ -71,11 +71,13 @@ const auditFor = (entity: string, entityId: string) =>
     .where(and(eq(auditLog.entity, entity), eq(auditLog.entityId, entityId)));
 
 let analyst: Actor;
+let otherAnalyst: Actor;
 let approver: Actor;
 let otherApprover: Actor;
 
 beforeEach(async () => {
   analyst = await createUser("analyst@contoso.com", "analyst");
+  otherAnalyst = await createUser("analyst2@contoso.com", "analyst");
   approver = await createUser("approver@contoso.com", "approver");
   otherApprover = await createUser("approver2@contoso.com", "approver");
   session.actor = null;
@@ -89,12 +91,13 @@ describe("refunds actions", () => {
     const before = await auditFor("refund_request", id);
     expect(before.map((row) => row.action)).toEqual(["refund_request.created"]);
 
+    session.actor = otherAnalyst;
     const result = await decideRefund({ refundId: id, decision: "approve" });
     expect(result).toEqual({ ok: true });
 
     const row = await refund(id);
     expect(row?.status).toBe("approved");
-    expect(row?.decidedBy).toBe(analyst.id);
+    expect(row?.decidedBy).toBe(otherAnalyst.id);
     expect(row?.decidedAt).toBeInstanceOf(Date);
 
     const decisionRows = (await auditFor("refund_request", id)).filter(
@@ -103,7 +106,7 @@ describe("refunds actions", () => {
     expect(decisionRows).toHaveLength(1);
     expect(decisionRows[0]).toMatchObject({
       action: "refund_request.approved",
-      actorId: analyst.id,
+      actorId: otherAnalyst.id,
       before: expect.objectContaining({ status: "pending" }),
       after: expect.objectContaining({ status: "approved" }),
     });
@@ -153,6 +156,27 @@ describe("refunds actions", () => {
     expect(await db.select().from(auditLog)).toHaveLength(auditBefore.length);
   });
 
+  it("rejects a requester deciding their own below-threshold refund", async () => {
+    const { id, path } = await submitAs(analyst, "20.00");
+    expect(path).toBe("direct");
+    const auditBefore = await db.select().from(auditLog);
+
+    for (const input of [
+      { refundId: id, decision: "approve" as const },
+      { refundId: id, decision: "reject" as const, note: "Not needed" },
+    ]) {
+      expect(await decideRefund(input)).toEqual({
+        ok: false,
+        error: "You requested this refund, so a different approver must decide it.",
+      });
+    }
+
+    const row = await refund(id);
+    expect(row?.status).toBe("pending");
+    expect(row?.decidedBy).toBeNull();
+    expect(await db.select().from(auditLog)).toHaveLength(auditBefore.length);
+  });
+
   it("lets a different approver decide an above-threshold refund", async () => {
     const { id } = await submitAs(approver, "750.00");
     session.actor = otherApprover;
@@ -184,6 +208,7 @@ describe("refunds actions", () => {
 
   it("requires a note to reject", async () => {
     const { id } = await submitAs(analyst, "20.00");
+    session.actor = otherAnalyst;
     const result = await decideRefund({ refundId: id, decision: "reject" });
     expect(result).toEqual({
       ok: false,
@@ -221,6 +246,7 @@ describe("refunds actions", () => {
 
   it("marks an approved refund paid by an approver and audits it", async () => {
     const { id } = await submitAs(analyst, "100.00");
+    session.actor = otherAnalyst;
     await decideRefund({ refundId: id, decision: "approve" });
     session.actor = approver;
 
@@ -243,6 +269,7 @@ describe("refunds actions", () => {
 
   it("forbids analysts from marking refunds paid", async () => {
     const { id } = await submitAs(analyst, "100.00");
+    session.actor = otherAnalyst;
     await decideRefund({ refundId: id, decision: "approve" });
 
     await expect(markPaid({ refundId: id })).rejects.toThrow("/forbidden");
