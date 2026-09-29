@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import type { RefundStatus } from "./rules";
+import { STATUS_LABELS, type RefundStatus } from "./rules";
 
 const VARIANTS: Record<RefundStatus, "outline" | "secondary" | "default" | "destructive"> = {
   pending: "outline",
@@ -10,9 +10,7 @@ const VARIANTS: Record<RefundStatus, "outline" | "secondary" | "default" | "dest
 
 export function RefundStatusBadge({ status }: { status: RefundStatus }) {
   return (
-    <Badge variant={VARIANTS[status]} className="capitalize">
-      {status}
-    </Badge>
+    <Badge variant={VARIANTS[status]}>{STATUS_LABELS[status]}</Badge>
   );
 }
 

@@ -7,6 +7,7 @@ import {
   listKycCases,
   SORTABLE_COLUMNS,
 } from "@/modules/kyc/queries";
+import { HIGH_RISK_THRESHOLD } from "@/modules/kyc/policy";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { QueueTable, type QueueRow } from "./queue-table";
@@ -38,7 +39,7 @@ export default async function KycPage({
     <div className="flex flex-1 flex-col gap-6">
       <PageHeader
         title="KYC review"
-        description="Triage and decide on identity verification cases. Oldest pending cases first."
+        description={`Oldest pending first. Cases at or above risk ${HIGH_RISK_THRESHOLD} need an approver.`}
         actions={
           <Badge variant="outline" className="h-7 px-2.5">
             {total} {total === 1 ? "case" : "cases"}

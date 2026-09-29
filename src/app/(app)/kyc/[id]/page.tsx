@@ -2,6 +2,12 @@ import { notFound } from "next/navigation";
 
 import { requireUser } from "@/core/auth";
 import { hasRole } from "@/core/rbac";
+import { formatDateTime } from "@/lib/format";
+import {
+  ACTION_LABELS,
+  DOCUMENT_STATUS_LABELS,
+  DOCUMENT_TYPE_LABELS,
+} from "@/modules/kyc/labels";
 import {
   getKycCase,
   listCaseAudit,
@@ -10,13 +16,6 @@ import {
 import { RiskBadge, StatusBadge } from "@/modules/kyc/risk-badge";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { DecisionPanel } from "./decision-panel";
 
 const DOCUMENT_VARIANT = {
@@ -27,17 +26,11 @@ const DOCUMENT_VARIANT = {
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="space-y-1">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <div className="text-sm">{value}</div>
-    </div>
+    <li className="flex items-baseline justify-between gap-4 p-3 text-sm">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="text-right">{value}</span>
+    </li>
   );
-}
-
-function formatDate(value: Date | null) {
-  return value
-    ? value.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })
-    : "—";
 }
 
 export default async function KycCasePage({
@@ -70,30 +63,25 @@ export default async function KycCasePage({
       />
 
       <div className="grid gap-6 lg:grid-cols-[2fr_3fr]">
-        <Card className="shadow-none">
-          <CardHeader>
-            <CardTitle className="text-base">Customer</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-4">
+        <section className="space-y-3">
+          <h2 className="text-sm font-semibold">Customer</h2>
+          <ul className="divide-y rounded-sm border">
             <Field label="Country" value={kycCase.country} />
-            <Field
-              label="Submitted"
-              value={formatDate(kycCase.submittedAt)}
-            />
+            <Field label="Submitted" value={formatDateTime(kycCase.submittedAt)} />
             <Field
               label="Assignee"
               value={
                 kycCase.assignee?.name ?? kycCase.assignee?.email ?? "Unassigned"
               }
             />
-            <Field label="Decided" value={formatDate(kycCase.decidedAt)} />
+            <Field label="Decided" value={formatDateTime(kycCase.decidedAt)} />
             <Field
               label="Decided by"
               value={kycCase.decider?.name ?? kycCase.decider?.email ?? "—"}
             />
             <Field label="Reason" value={kycCase.decisionReason ?? "—"} />
-          </CardContent>
-        </Card>
+          </ul>
+        </section>
 
         <DecisionPanel
           caseId={kycCase.id}
@@ -107,63 +95,57 @@ export default async function KycCasePage({
         />
       </div>
 
-      <Card className="shadow-none">
-        <CardHeader>
-          <CardTitle className="text-base">Documents</CardTitle>
-          <CardDescription>
-            Placeholder records until the document store lands.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {kycCase.documents.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No documents.</p>
-          ) : (
-            kycCase.documents.map((document) => (
-              <div
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold">Documents</h2>
+        {kycCase.documents.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No documents.</p>
+        ) : (
+          <ul className="divide-y rounded-sm border">
+            {kycCase.documents.map((document) => (
+              <li
                 key={document.fileName}
-                className="flex items-center justify-between rounded-sm border px-3 py-2 text-sm"
+                className="flex items-center justify-between gap-4 p-3 text-sm"
               >
-                <span className="font-medium capitalize">{document.type}</span>
+                <span className="font-medium">
+                  {DOCUMENT_TYPE_LABELS[document.type] ?? document.type}
+                </span>
                 <span className="text-muted-foreground">
                   {document.fileName}
                 </span>
                 <Badge variant={DOCUMENT_VARIANT[document.status]}>
-                  {document.status}
+                  {DOCUMENT_STATUS_LABELS[document.status]}
                 </Badge>
-              </div>
-            ))
-          )}
-        </CardContent>
-      </Card>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
-      <Card className="shadow-none">
-        <CardHeader>
-          <CardTitle className="text-base">Audit trail</CardTitle>
-          <CardDescription>Newest first.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {audit.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Nothing has happened to this case yet.
-            </p>
-          ) : (
-            audit.map((entry) => (
-              <div
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold">Audit trail</h2>
+        {audit.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Nothing has happened to this case yet.
+          </p>
+        ) : (
+          <ol className="space-y-3">
+            {audit.map((entry) => (
+              <li
                 key={entry.id}
-                className="flex flex-wrap items-center gap-2 rounded-sm border px-3 py-2 text-sm"
+                className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b pb-3 text-sm last:border-0 last:pb-0"
               >
-                <Badge variant="outline">{entry.action}</Badge>
-                <span className="text-muted-foreground">
-                  {entry.actorName ?? "system"}
+                <span className="font-medium">
+                  {ACTION_LABELS[entry.action] ?? entry.action}
                 </span>
+                <span>{entry.actorName ?? "System"}</span>
                 <span className="ml-auto text-xs text-muted-foreground">
-                  {formatDate(entry.createdAt)}
+                  {formatDateTime(entry.createdAt)}
                 </span>
-              </div>
-            ))
-          )}
-        </CardContent>
-      </Card>
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
     </div>
   );
 }

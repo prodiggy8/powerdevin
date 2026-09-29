@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FileCheck, Flag, ReceiptText, ShieldCheck, Users } from "lucide-react";
+import { FileCheck, Flag, ReceiptText, Users } from "lucide-react";
 
 import type { Role } from "@/core/rbac";
 import { NavUser } from "@/components/nav-user";
@@ -47,17 +47,9 @@ export function AppSidebar({
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
+            <SidebarMenuButton asChild tooltip="PowerDevin">
               <Link href="/">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-sm bg-primary text-primary-foreground">
-                  <ShieldCheck className="size-4" />
-                </span>
-                <span className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">PowerDevin</span>
-                  <span className="truncate text-xs text-muted-foreground">
-                    Operations console
-                  </span>
-                </span>
+                <span className="truncate font-semibold">PowerDevin</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

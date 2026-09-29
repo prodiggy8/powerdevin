@@ -2,6 +2,12 @@ export const ROLES = ["admin", "approver", "analyst"] as const;
 
 export type Role = (typeof ROLES)[number];
 
+export const ROLE_LABELS: Record<Role, string> = {
+  admin: "Admin",
+  approver: "Approver",
+  analyst: "Analyst",
+};
+
 /** Higher rank implies every capability of the lower ranks. */
 const RANK: Record<Role, number> = {
   analyst: 0,

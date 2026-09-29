@@ -36,7 +36,7 @@ export default async function FlagsPage({
     <div className="flex flex-1 flex-col gap-6">
       <PageHeader
         title="Feature flags"
-        description="Toggle flags per environment. Every change is written to the audit log; prod needs a reason."
+        description="Toggle flags per environment. Prod changes need a reason."
         actions={
           canCreateFlag(user.role) ? (
             <Button asChild size="sm">

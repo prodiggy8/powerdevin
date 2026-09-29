@@ -22,7 +22,7 @@ export function AppBreadcrumbs() {
         {trail.map((crumb, index) => (
           <Fragment key={crumb.href ?? crumb.label}>
             {index > 0 && <BreadcrumbSeparator />}
-            <BreadcrumbItem className="capitalize">
+            <BreadcrumbItem>
               {crumb.href ? (
                 <BreadcrumbLink href={crumb.href}>{crumb.label}</BreadcrumbLink>
               ) : crumb.current ? (

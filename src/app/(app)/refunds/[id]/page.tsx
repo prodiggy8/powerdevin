@@ -13,8 +13,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { formatDateTime } from "@/lib/format";
 import { getRefund, refundAuditTrail } from "@/modules/refunds/queries";
 import {
+  ACTION_LABELS,
+  APPROVAL_STATUS_LABELS,
   REASON_LABELS,
   canDecide,
   canMarkPaid,
@@ -26,12 +29,6 @@ import {
   RefundStatusBadge,
 } from "@/modules/refunds/status-badge";
 import { DecisionPanel } from "./decision-panel";
-
-function formatDate(value: Date | null) {
-  return value
-    ? value.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })
-    : "—";
-}
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -117,12 +114,12 @@ export default async function RefundDetailPage({
               <Field label="Requested by">
                 {detail.requesterName ?? detail.requesterEmail ?? "—"}
               </Field>
-              <Field label="Requested at">{formatDate(refund.requestedAt)}</Field>
+              <Field label="Requested at">{formatDateTime(refund.requestedAt)}</Field>
               <Field label="Decided by">
                 {detail.deciderName ?? detail.deciderEmail ?? "—"}
               </Field>
-              <Field label="Decided at">{formatDate(refund.decidedAt)}</Field>
-              <Field label="Paid at">{formatDate(refund.paidAt)}</Field>
+              <Field label="Decided at">{formatDateTime(refund.decidedAt)}</Field>
+              <Field label="Paid at">{formatDateTime(refund.paidAt)}</Field>
               <Field label="Currency">{refund.currency}</Field>
               <Field label="Note">{refund.note ?? "—"}</Field>
               <Field label="Decision note">{refund.decisionNote ?? "—"}</Field>
@@ -164,13 +161,13 @@ export default async function RefundDetailPage({
               <CardContent>
                 <dl className="grid gap-3">
                   <Field label="Status">
-                    <Badge variant="outline" className="capitalize">
-                      {approval.request.status}
+                    <Badge variant="outline">
+                      {APPROVAL_STATUS_LABELS[approval.request.status]}
                     </Badge>
                   </Field>
                   <Field label="Approver">{approval.approverName ?? "—"}</Field>
-                  <Field label="Opened">{formatDate(approval.request.createdAt)}</Field>
-                  <Field label="Decided">{formatDate(approval.request.decidedAt)}</Field>
+                  <Field label="Opened">{formatDateTime(approval.request.createdAt)}</Field>
+                  <Field label="Decided">{formatDateTime(approval.request.decidedAt)}</Field>
                 </dl>
               </CardContent>
             ) : null}
@@ -190,12 +187,12 @@ export default async function RefundDetailPage({
             <ol className="space-y-3">
               {trail.map((entry) => (
                 <li key={entry.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b pb-3 text-sm last:border-0 last:pb-0">
-                  <code className="rounded-sm bg-muted px-1.5 py-0.5 text-xs">
-                    {entry.action}
-                  </code>
+                  <span className="font-medium">
+                    {ACTION_LABELS[entry.action] ?? entry.action}
+                  </span>
                   <span>{entry.actorName ?? entry.actorEmail ?? "System"}</span>
                   <span className="ml-auto text-xs text-muted-foreground">
-                    {formatDate(entry.createdAt)}
+                    {formatDateTime(entry.createdAt)}
                   </span>
                 </li>
               ))}

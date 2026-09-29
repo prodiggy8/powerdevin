@@ -78,4 +78,27 @@ describe("db:seed flags", () => {
     );
     expect(partial.length).toBeGreaterThanOrEqual(5);
   });
+
+  it("audits each change from the previous rollout step", async () => {
+    await runSeed({ db, log: silent });
+
+    const entries = await db
+      .select()
+      .from(auditLog)
+      .where(eq(auditLog.action, "feature_flag_state.updated"));
+    type State = { enabled: boolean; rolloutPercent: number; reason?: string | null };
+    for (const entry of entries) {
+      const before = entry.before as State;
+      const after = entry.after as State;
+      if (after.enabled) {
+        expect(before.rolloutPercent).toBeLessThan(after.rolloutPercent);
+      } else {
+        expect(before.enabled).toBe(true);
+      }
+    }
+    const reasons = new Set(
+      entries.map((entry) => (entry.after as State).reason).filter(Boolean),
+    );
+    expect(reasons.size).toBeGreaterThan(1);
+  });
 });

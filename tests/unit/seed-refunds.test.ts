@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { needsApprover } from "@/modules/refunds/rules";
-import { refundSeedFixtures } from "@/db/seed/refunds";
+import {
+  CUSTOMER_EMAIL_DOMAINS,
+  refundSeedFixtures,
+  seedOrderRef,
+} from "@/db/seed/refunds";
+import { SEED_EMAIL_DOMAIN } from "@/db/seed/users";
 
 const NOW = Date.UTC(2026, 0, 1);
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -23,6 +28,24 @@ describe("refundSeedFixtures", () => {
     expect(
       byStatus("pending").filter((fixture) => needsApprover(fixture.amount)),
     ).toHaveLength(10);
+  });
+
+  it("numbers orders from ORD-48120 in steps of 7", () => {
+    expect(fixtures[0].orderRef).toBe("ORD-48120");
+    expect(fixtures[1].orderRef).toBe("ORD-48127");
+    expect(fixtures.at(-1)?.orderRef).toBe(seedOrderRef(79));
+    expect(new Set(fixtures.map((fixture) => fixture.orderRef)).size).toBe(80);
+  });
+
+  it("puts customers on consumer domains, never the staff domain", () => {
+    const domains = new Set<string>();
+    for (const { customerEmail } of fixtures) {
+      const [local, domain] = customerEmail.split("@");
+      expect(local).not.toMatch(/\d/);
+      expect(domain).not.toBe(SEED_EMAIL_DOMAIN);
+      domains.add(domain);
+    }
+    expect([...domains].sort()).toEqual([...CUSTOMER_EMAIL_DOMAINS].sort());
   });
 
   it("covers 12.00 to 4,800.00 on both sides of the threshold", () => {

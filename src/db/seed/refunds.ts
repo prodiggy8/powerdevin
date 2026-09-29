@@ -12,7 +12,15 @@ import {
 import { SEED_EMAIL_DOMAIN } from "./users";
 import type { SeedContext, SeedModule } from "./types";
 
-export const SEED_ORDER_PREFIX = "SEED-ORD-";
+/**
+ * Seeded order refs share this prefix with real ones, so reset only matches
+ * refunds that were also requested by a seeded staff user.
+ */
+export const SEED_ORDER_PREFIX = "ORD-";
+const FIRST_ORDER_NUMBER = 48_120;
+const ORDER_NUMBER_STEP = 7;
+
+export const CUSTOMER_EMAIL_DOMAINS = ["gmail.com", "outlook.com", "proton.me"] as const;
 
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
@@ -43,6 +51,15 @@ const CUSTOMERS = [
   "Eva Novak",
   "Jin Park",
 ] as const;
+
+const NOTES = [
+  "Customer contacted support by email.",
+  "Duplicate charge confirmed in the payment provider dashboard.",
+  "Customer shared a screenshot of the failed checkout.",
+  "Order cancelled before fulfilment; courier never collected it.",
+  "Escalated from live chat after two follow-ups.",
+  "Partial refund agreed with the customer on the phone.",
+];
 
 const REJECTION_NOTES = [
   "Order was already refunded through the payment provider.",
@@ -96,6 +113,15 @@ function pick<T>(list: readonly T[], index: number): T {
   return list[index % list.length];
 }
 
+export function seedOrderRef(index: number) {
+  return `${SEED_ORDER_PREFIX}${FIRST_ORDER_NUMBER + index * ORDER_NUMBER_STEP}`;
+}
+
+function customerEmail(customerIndex: number) {
+  const name = CUSTOMERS[customerIndex];
+  return `${slug(name)}@${pick(CUSTOMER_EMAIL_DOMAINS, customerIndex)}`;
+}
+
 function statusFor(index: number): { status: RefundStatus; above: boolean } {
   const b = SEED_REFUND_BUCKETS;
   let offset = index;
@@ -130,7 +156,8 @@ export function refundSeedFixtures(
 
   return Array.from({ length: SEED_REFUND_COUNT }, (_, index) => {
     const { status, above } = statusFor(index);
-    const customer = pick(CUSTOMERS, index * 7 + 3);
+    const customerIndex = (index * 7 + 3) % CUSTOMERS.length;
+    const customer = CUSTOMERS[customerIndex];
     const requestedBy = pick(requesters, index * 5 + 1);
 
     let decider = pick(deciders, index * 3);
@@ -151,13 +178,13 @@ export function refundSeedFixtures(
         : null;
 
     return {
-      orderRef: `${SEED_ORDER_PREFIX}${10_000 + index}`,
+      orderRef: seedOrderRef(index),
       customerName: customer,
-      customerEmail: `${slug(customer)}@${SEED_EMAIL_DOMAIN}`,
+      customerEmail: customerEmail(customerIndex),
       amount: amountFor(index, above),
       currency: "USD",
       reason: pick(REFUND_REASONS, index * 3 + 1),
-      note: index % 4 === 0 ? "Customer contacted support by email." : null,
+      note: index % 4 === 0 ? pick(NOTES, index / 4) : null,
       status,
       requestedBy,
       requestedAt,
@@ -175,7 +202,13 @@ async function seededRefundIds(db: SeedContext["db"]) {
   const rows = await db
     .select({ id: refundRequests.id })
     .from(refundRequests)
-    .where(like(refundRequests.orderRef, `${SEED_ORDER_PREFIX}%`));
+    .innerJoin(users, eq(users.id, refundRequests.requestedBy))
+    .where(
+      and(
+        like(refundRequests.orderRef, `${SEED_ORDER_PREFIX}%`),
+        like(users.email, `%@${SEED_EMAIL_DOMAIN}`),
+      ),
+    );
   return rows.map((row) => row.id);
 }
 

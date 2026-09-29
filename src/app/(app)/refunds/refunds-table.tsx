@@ -5,10 +5,13 @@ import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { DataTable, type DataTableQuery } from "@/core/data-table";
+import { formatDate } from "@/lib/format";
 import {
   REASON_LABELS,
   REFUND_REASONS,
   REFUND_STATUSES,
+  REFUND_THRESHOLD,
+  STATUS_LABELS,
   formatMoney,
   needsApprover,
   type RefundReason,
@@ -105,12 +108,7 @@ export function RefundsTable({
       {
         accessorKey: "requestedAt",
         header: "Requested",
-        cell: ({ row }) =>
-          new Date(row.original.requestedAt).toLocaleDateString(undefined, {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-          }),
+        cell: ({ row }) => formatDate(row.original.requestedAt),
       },
     ],
     [],
@@ -128,7 +126,7 @@ export function RefundsTable({
           id: "status",
           label: "Status",
           options: REFUND_STATUSES.map((status) => ({
-            label: status,
+            label: STATUS_LABELS[status],
             value: status,
           })),
         },
@@ -144,8 +142,11 @@ export function RefundsTable({
           id: "threshold",
           label: "Threshold",
           options: [
-            { label: "At or above 500.00", value: "above" },
-            { label: "Below 500.00", value: "below" },
+            {
+              label: `At or above ${formatMoney(REFUND_THRESHOLD)}`,
+              value: "above",
+            },
+            { label: `Below ${formatMoney(REFUND_THRESHOLD)}`, value: "below" },
           ],
         },
       ]}

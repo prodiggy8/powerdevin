@@ -3,7 +3,12 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/core/auth";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
-import { canArchiveFlag, FLAG_ENVIRONMENTS } from "@/modules/flags/policy";
+import { formatDateTime } from "@/lib/format";
+import {
+  ACTION_LABELS,
+  canArchiveFlag,
+  FLAG_ENVIRONMENTS,
+} from "@/modules/flags/policy";
 import { getFlag, getFlagAuditTrail } from "@/modules/flags/queries";
 import { ArchiveFlagButton } from "../archive-flag-button";
 import { FlagStateEditor } from "../flag-state-editor";
@@ -84,12 +89,14 @@ export default async function FlagDetailPage({
             {trail.map((entry) => (
               <li key={entry.id} className="space-y-1 p-3 text-sm">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium">{entry.action}</span>
+                  <span className="font-medium">
+                    {ACTION_LABELS[entry.action] ?? entry.action}
+                  </span>
                   <span className="text-muted-foreground">
                     {entry.actorName ?? entry.actorEmail ?? "system"}
                   </span>
                   <span className="ml-auto text-xs text-muted-foreground">
-                    {new Date(entry.createdAt).toLocaleString()}
+                    {formatDateTime(entry.createdAt)}
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground">

@@ -1,8 +1,7 @@
 "use client";
 
-import { Check, PlusCircle } from "lucide-react";
+import { Check } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -18,7 +17,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
 export type FacetedFilterOption = { label: string; value: string };
@@ -43,20 +41,8 @@ export function DataTableFacetedFilter({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="h-9 border-dashed">
-          <PlusCircle className="size-4" />
-          {label}
-          {selected ? (
-            <>
-              <Separator
-                orientation="vertical"
-                className="mx-1 data-[orientation=vertical]:h-4"
-              />
-              <Badge variant="secondary" className="rounded-sm px-1 font-normal">
-                {selected.label}
-              </Badge>
-            </>
-          ) : null}
+        <Button variant="outline" size="sm" className="h-9">
+          {selected ? `${label}: ${selected.label}` : label}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[200px] p-0" align="start">

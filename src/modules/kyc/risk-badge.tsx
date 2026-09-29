@@ -1,6 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
-import { riskBand } from "./policy";
+import { riskBand, type RiskBand } from "./policy";
 import type { KycStatus } from "./schema";
 
 const BAND_CLASS = {
@@ -9,11 +8,17 @@ const BAND_CLASS = {
   high: "bg-red-500/10 text-red-700 dark:text-red-400",
 } as const;
 
+const BAND_LABEL: Record<RiskBand, string> = {
+  low: "Low",
+  medium: "Medium",
+  high: "High",
+};
+
 export function RiskBadge({ score }: { score: number }) {
   const band = riskBand(score);
   return (
-    <Badge variant="ghost" className={cn("capitalize", BAND_CLASS[band])}>
-      {band} · {score}
+    <Badge variant="ghost" className={BAND_CLASS[band]}>
+      {BAND_LABEL[band]} · {score}
     </Badge>
   );
 }

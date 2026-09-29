@@ -45,6 +45,28 @@ const FLAGS: FlagFixture[] = [
   archived: index >= 22,
 }));
 
+const ROLLOUT_STEPS = [0, 5, 10, 25, 50, 75, 100] as const;
+
+const PROD_REASONS = [
+  "Staged rollout approved in the weekly release review.",
+  "Error rates flat for 48 hours at the previous step.",
+  "Rolled back after a spike in support tickets.",
+  "Requested by the payments team ahead of the partner launch.",
+  "Compliance sign-off received; widening to the next cohort.",
+];
+
+/**
+ * The state one rollout step before `current`: partial rollouts step down the
+ * ladder, and a disabled flag was last on at the first step.
+ */
+function previousRolloutStep(current: { enabled: boolean; rolloutPercent: number }) {
+  if (!current.enabled) return { enabled: true, rolloutPercent: ROLLOUT_STEPS[1] };
+  const previous = [...ROLLOUT_STEPS]
+    .reverse()
+    .find((step) => step < current.rolloutPercent) ?? 0;
+  return { enabled: previous > 0, rolloutPercent: previous };
+}
+
 /** Deterministic per flag and environment, so re-seeding is stable. */
 function stateFor(flagIndex: number, envIndex: number) {
   const seed = flagIndex * 3 + envIndex;
@@ -168,8 +190,7 @@ export const seedFlags: SeedModule = {
           entityId: state.id,
           before: {
             environment: state.environment,
-            enabled: !state.enabled,
-            rolloutPercent: 0,
+            ...previousRolloutStep(state),
           },
           after: {
             environment: state.environment,
@@ -177,7 +198,7 @@ export const seedFlags: SeedModule = {
             rolloutPercent: state.rolloutPercent,
             reason:
               state.environment === "prod"
-                ? "Staged rollout approved in the weekly release review."
+                ? PROD_REASONS[index % PROD_REASONS.length]
                 : null,
           },
           createdAt: new Date(now - (index + 1) * 2 * DAY_MS),

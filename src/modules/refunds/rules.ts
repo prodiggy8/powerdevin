@@ -25,6 +25,28 @@ export const REASON_LABELS: Record<RefundReason, string> = {
   other: "Other",
 };
 
+export const STATUS_LABELS: Record<RefundStatus, string> = {
+  pending: "Pending",
+  approved: "Approved",
+  rejected: "Rejected",
+  paid: "Paid",
+};
+
+export const APPROVAL_STATUS_LABELS: Record<"pending" | "approved" | "rejected", string> = {
+  pending: "Pending",
+  approved: "Approved",
+  rejected: "Rejected",
+};
+
+export const ACTION_LABELS: Record<string, string> = {
+  "refund_request.created": "Requested",
+  "refund_request.approved": "Approved",
+  "refund_request.rejected": "Rejected",
+  "refund_request.paid": "Paid",
+  "approval_request.created": "Approval requested",
+  "approval_request.decided": "Approval decided",
+};
+
 /** Matches numeric(14,2): up to 12 integer digits and 2 decimals. */
 export const AMOUNT_PATTERN = /^\d{1,12}(\.\d{1,2})?$/;
 
